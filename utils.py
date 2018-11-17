@@ -32,11 +32,15 @@ def create_VEDAI(PATH_TO_VEHICLES_FOLDER):
 
 
 def save_VEDAI(rgb, infra):
+    # Takes in arrays of rgb and infrared images
+    # Saves them to disk, no return value
     np.save("vedai_rgb_all.npy", rgb)
     np.save("vedai_infra_all.npy", infra)
 
 
 def load_VEDAI():
+    # No parameters, expected to run in directory with VEDAI.npy files
+    # Returns two arrays with rgb and infrared images respectively
     rgb = np.load("vedai_rgb_all.npy")
     infra = np.load("vedai_infra_all.npy")
     return rgb, infra
@@ -48,6 +52,7 @@ def data_explore(data):
 
 
 def combine_rgb_infra(rgb, infra):
+    # Concatenates the two modalities along the channels axis
     four_channel = np.concatenate(rgb, infra, axis=-1)
     return four_channel
 
