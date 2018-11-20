@@ -3,6 +3,8 @@ import imageio
 from keras.utils import Sequence
 from os import listdir
 from os.path import isfile, join
+import tensorflow as tf
+from skimage.transform import resize
 
 
 def create_VEDAI(PATH_TO_VEHICLES_FOLDER):
@@ -57,14 +59,50 @@ def combine_rgb_infra(rgb, infra):
     return four_channel
 
 
-def non_overlapping_patches(images, patch_size=(64, 64), padding="reflect"):
-    # TODO: Create function that returns patches given images and patch size
-    pass
+def overlapping_patches(images, patch_size=(64, 64), padding="VALID"):
+    sess = tf.Session()
+
+    num_images, size_x, size_y, channels = images.shape
+    ims = tf.convert_to_tensor(images)
+    patch_x, patch_y = patch_size
+    patches = tf.extract_image_patches(ims, [1, patch_x, patch_y, 1], [
+        1, patch_x, patch_y, 1], [1, 1, 1, 1], padding=padding)
+    patches_shape = tf.shape(patches)
+    with sess.as_default():
+        np = tf.reshape(patches, [tf.reduce_prod(patches_shape[0:3]),
+                                  patch_x, patch_y, channels]).eval()
+        return np
 
 
-def reconstruct_patches(patches, image_size, padding="reflect"):
+def non_overlapping_patches(image, patch_size=(64, 64)):
+    size_x, size_y, channels = image.shape
+    patch_x, patch_y = patch_size
+    im_pad = np.pad(image, ((0, size_x % patch_x),
+                            (0, size_y % patch_y), (0, 0)), mode="constant")
+    num_patches = (size_x // patch_x + 1) * (size_y // patch_y + 1)
+    patches = np.zeros(num_patches, patch_x, patch_y, channels)
+    counter = 0
+    for i in range(size_x // patch_x + 1):
+        for j in range(size_y // patch_y + 1):
+            x_s = i * patch_x
+            y_s = j * patch_y
+            patches[counter, :, :, :] = im_pad[x_s:x_s + patch_x - 1,
+                                               y_s:y_s + patch_y - 1, :]
+            counter += 1
+    return patches
+
+
+def downsample_image(image, factor=4):
+    h, w = image.size
+    h = h // factor
+    w = w // factor
+    return resize(image, (h, w))
+
+
+def reconstruct_patches(patches, image_size):
     # TODO: Create a function which reconstructs an image
     # when given patches created by non_overlapping_patches
+    # Discards predictions for zero border
     pass
 
 
