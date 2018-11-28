@@ -11,25 +11,30 @@ def create_VEDAI(PATH_TO_VEHICLES_FOLDER):
     # Takes in the full path to the unzipped "VEHICULES" folder
     # Returns RGB and Infrared images in (images, x, y, channels) format
     NUM_FILES = 2536
+    MAX_INDEX = 1272
     X_PIXELS = 1024
     Y_PIXELS = 1024
 
     onlyfiles = [f for f in listdir(PATH_TO_VEHICLES_FOLDER) if isfile(
         join(PATH_TO_VEHICLES_FOLDER, f)) and "png" in f]
     assert len(onlyfiles) == NUM_FILES, "Not the full VEDAI 1024 Dataset"
-    rgb = np.zeros((NUM_FILES, X_PIXELS, Y_PIXELS, 3))
-    infra = np.zeros((NUM_FILES, X_PIXELS, Y_PIXELS, 1))
-    indices = [format(n, '08') for n in range(NUM_FILES)]
+    rgb = np.zeros((MAX_INDEX, X_PIXELS, Y_PIXELS, 3))
+    infra = np.zeros((MAX_INDEX, X_PIXELS, Y_PIXELS, 1))
+    indices = [format(n, '08') for n in range(MAX_INDEX)]
     for index in indices:
-        pair = [file for file in onlyfiles if str(index) in file]
-        for file in pair:
-            im = imageio.imread(file)
-            if "co" in file:
-                rgb[int(index), :, :, :] = np.reshape(im,
-                                                      (tuple([1]) + im.shape))
-            elif "ir" in file:
-                infra[int(index), :, :, :] = np.reshape(
-                    im, (tuple([1]) + im.shape + tuple([1])))
+        if str(index) in onlyfiles:
+            pair = [file for file in onlyfiles if str(index) in file]
+            for file in pair:
+                im = imageio.imread(file)
+                if "co" in file:
+                    rgb[int(index), :, :, :] = np.reshape(
+                        im, (tuple([1]) + im.shape))
+                elif "ir" in file:
+                    infra[int(index), :, :, :] = np.reshape(
+                        im, (tuple([1]) + im.shape + tuple([1])))
+        else:
+            print("The following image is missing!" + index)
+
     return rgb, infra
 
 
@@ -82,8 +87,8 @@ def non_overlapping_patches(image, patch_size=(64, 64)):
     num_patches = (size_x // patch_x + 1) * (size_y // patch_y + 1)
     patches = np.zeros(num_patches, patch_x, patch_y, channels)
     counter = 0
-    for i in range(size_x // patch_x + 1):
-        for j in range(size_y // patch_y + 1):
+    for i in range((size_x // patch_x) + 1):
+        for j in range((size_y // patch_y) + 1):
             x_s = i * patch_x
             y_s = j * patch_y
             patches[counter, :, :, :] = im_pad[x_s:x_s + patch_x - 1,
@@ -93,10 +98,12 @@ def non_overlapping_patches(image, patch_size=(64, 64)):
 
 
 def downsample_image(image, factor=4):
+    # Downsamples numpy array image by factor
+    # Returns the image and the downsampled copy in a tuple
     h, w = image.size
     h = h // factor
     w = w // factor
-    return resize(image, (h, w))
+    return image, resize(image, (h, w))
 
 
 def reconstruct_patches(patches, image_size):
