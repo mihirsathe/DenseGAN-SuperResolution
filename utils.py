@@ -22,8 +22,8 @@ def create_VEDAI(PATH_TO_VEHICLES_FOLDER):
     infra = np.zeros((MAX_INDEX, X_PIXELS, Y_PIXELS, 1))
     indices = [format(n, '08') for n in range(MAX_INDEX)]
     for index in indices:
-        if str(index) in onlyfiles:
-            pair = [file for file in onlyfiles if str(index) in file]
+        pair = [file for file in onlyfiles if str(index) in file]
+        if pair:
             for file in pair:
                 im = imageio.imread(file)
                 if "co" in file:
@@ -33,7 +33,7 @@ def create_VEDAI(PATH_TO_VEHICLES_FOLDER):
                     infra[int(index), :, :, :] = np.reshape(
                         im, (tuple([1]) + im.shape + tuple([1])))
         else:
-            print("The following image is missing!" + index)
+            print("The following image is missing!: " + index)
 
     return rgb, infra
 
