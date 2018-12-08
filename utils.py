@@ -5,6 +5,7 @@ from os import listdir
 from os.path import isfile, join
 from skimage.transform import downscale_local_mean
 import random
+import tensorflow as tf
 
 
 def normalize(image):
