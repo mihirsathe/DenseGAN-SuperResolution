@@ -6,8 +6,10 @@ from os.path import isfile, join
 from skimage.transform import downscale_local_mean
 import random
 
+
 def normalize(image):
-  return image/255.0    
+    return image / 255.0
+
 
 def read_VEDAI(subset, PATH_TO_VEHICLES_FOLDER):
     # Takes in the full path to the unzipped "VEHICULES" folder
@@ -88,7 +90,7 @@ def create_subsets(imgs, output_path, use_validation=True,
     # Saves txt files containing the names of the files
     # used in each subset, no return value
     assert training_percent + \
-        testing_percent == 1, "Training + testing percents must equal 1."
+           testing_percent == 1, "Training + testing percents must equal 1."
     random.seed(SEED)
     random.shuffle(imgs)
     print('Using ' + str(len(imgs)) + ' images.')
@@ -140,8 +142,23 @@ def data_explore(data):
 
 def combine_rgb_infra(rgb, infra):
     # Concatenates the two modalities along the channels axis
-    four_channel = np.concatenate(rgb, infra, axis=-1)
+    four_channel = np.concatenate((rgb, infra), axis=-1)
     return four_channel
+
+
+def overlapping_patches(images, patch_size=(64, 64), padding="VALID"):
+    sess = tf.Session()
+
+    num_images, size_x, size_y, channels = images.shape
+    ims = tf.convert_to_tensor(images)
+    patch_x, patch_y = patch_size
+    patches = tf.extract_image_patches(ims, [1, patch_x, patch_y, 1], [
+        1, patch_x, patch_y, 1], [1, 1, 1, 1], padding=padding)
+    patches_shape = tf.shape(patches)
+    with sess.as_default():
+        np = tf.reshape(patches, [tf.reduce_prod(patches_shape[0:3]),
+                                  patch_x, patch_y, channels]).eval()
+        return np
 
 
 def non_overlapping_patches(image, patch_size=(64, 64)):
@@ -162,7 +179,7 @@ def non_overlapping_patches(image, patch_size=(64, 64)):
             x_s = i * patch_x
             y_s = j * patch_y
             patches[counter, :, :, :] = im_pad[x_s:x_s + patch_x,
-                                               y_s:y_s + patch_y, :]
+                                        y_s:y_s + patch_y, :]
             counter += 1
     return patches
 
