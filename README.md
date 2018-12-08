@@ -16,6 +16,6 @@ rgb, infra = read_VEDAI(training_set, path)
 print('RGB shape: '+ str(rgb.shape))
 print('Infra shape: '+ str(infra.shape))
 
-training_data = combine_rgb_infra(rgb,infra)
+training_data = normalize(combine_rgb_infra(rgb,infra))
 print('Data shape: '+ str(training_data.shape))
 ```

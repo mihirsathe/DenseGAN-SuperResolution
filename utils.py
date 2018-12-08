@@ -6,6 +6,8 @@ from os.path import isfile, join
 from skimage.transform import downscale_local_mean
 import random
 
+def normalize(image):
+  return image/255.0    
 
 def read_VEDAI(subset, PATH_TO_VEHICLES_FOLDER):
     # Takes in the full path to the unzipped "VEHICULES" folder
