@@ -165,10 +165,10 @@ def non_overlapping_patches(image, patch_size=(64, 64)):
     return patches
 
 
-def downsample_image(image, block=(2, 2, 1):
+def downsample_image(image, block=(4, 4, 1)):
     # Downsamples numpy array image by factor
-    # Returns the image and the downsampled copy in a tuple
-    return image, downscale_local_mean(image, block)
+    # Returns  the downsampled copy
+    return downscale_local_mean(image, block)
 
 
 def reconstruct_patches(patches, image_size):
@@ -182,20 +182,27 @@ class VEDAISequence(Sequence):
 
     def __init__(self, rgb, infra, ims_per_batch):
         self.r, self.i = rgb, infra
-        self.batch_size = ims_per_batch
+        self.ims_per_batch = ims_per_batch
 
     def __len__(self):
-        # Returns number of batches in 
-        return int(np.ceil(len(self.r) / float(self.batch_size)))
+        # Returns number of batches given training set and ims_per_batch
+        return int(np.ceil(len(self.r) / float(self.ims_per_batch)))
 
     def __getitem__(self, idx):
-        batchsz = 256 * self.batch_size
+        # Number of patches * ims_per_batch
+        batchsz = 256 * self.ims_per_batch
+        # RGB and infra
         channels = 4
+        # Default patch size
         patch_x, patch_y = 64, 64
-        start = idx * self.batch_size
-        end = (idx + 1) * self.batch_size
+
+        # Batch number * ims_per_batch
+        start = idx * self.ims_per_batch
+        # Batch number * ims_per_batch  + 1
+        end = (idx + 1) * self.ims_per_batch
+
+        # Preallocate arrays of the correct size
         high_res = np.zeros((batchsz, patch_x, patch_y, channels))
-        low_res = np.zeros((batchsz, patch_x // 2, patch_y // 2, channels))
         im_num = 0
         for ind in range(start, end):
             st, stp = im_num * 256, (im_num + 1) * 256
@@ -204,6 +211,5 @@ class VEDAISequence(Sequence):
             infra = imageio.imread(self.i[ind])
             high_res[st:stp, :, :, :] = non_overlapping_patches(
                 combine_rgb_infra(rgb, infra))
-        for hr in range(batchsz):
-            low_res[hr, :, :, :] = downsample_image(high_res)
+        low_res = np.asarray([downsample_image(patch) for patch in high_res])
         return low_res, high_res
