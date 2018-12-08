@@ -83,7 +83,7 @@ def non_overlapping_patches(image, patch_size=(64, 64)):
     return patches
 
 
-def downsample_image(image, block=[2, 2]):
+def downsample_image(image, block=[2, 2, 1]):
     # Downsamples numpy array image by factor
     # Returns the image and the downsampled copy in a tuple
     return image, downscale_local_mean(image, block)
