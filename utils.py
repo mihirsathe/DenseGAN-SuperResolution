@@ -165,7 +165,7 @@ def non_overlapping_patches(image, patch_size=(64, 64)):
     return patches
 
 
-def downsample_image(image, block=[2, 2, 1]):
+def downsample_image(image, block=(2, 2, 1):
     # Downsamples numpy array image by factor
     # Returns the image and the downsampled copy in a tuple
     return image, downscale_local_mean(image, block)
@@ -181,11 +181,11 @@ def reconstruct_patches(patches, image_size):
 class VEDAISequence(Sequence):
 
     def __init__(self, rgb, infra, ims_per_batch):
-        # TODO: Initialize keras augmentor
         self.r, self.i = rgb, infra
         self.batch_size = ims_per_batch
 
     def __len__(self):
+        # Returns number of batches in 
         return int(np.ceil(len(self.r) / float(self.batch_size)))
 
     def __getitem__(self, idx):
