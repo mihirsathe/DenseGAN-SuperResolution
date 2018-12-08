@@ -4,35 +4,138 @@ from keras.utils import Sequence
 from os import listdir
 from os.path import isfile, join
 from skimage.transform import downscale_local_mean
+import random
 
 
 def create_VEDAI(PATH_TO_VEHICLES_FOLDER):
     # Takes in the full path to the unzipped "VEHICULES" folder
-    # Returns list of filenames of both rgb and infrared images
+    # Returns RGB and Infrared images in (images, x, y, channels) format
+    # Returns list of image names
     NUM_FILES = 2536
-    MAX_INDEX = 1272
+    #     MAX_INDEX = 1272
+    MAX_INDEX = 10
+    X_PIXELS = 1024
+    Y_PIXELS = 1024
+    PATH_TO_VEHICLES_FOLDER = PATH_TO_VEHICLES_FOLDER[0]
+
     onlyfiles = [f for f in listdir(PATH_TO_VEHICLES_FOLDER) if isfile(
         join(PATH_TO_VEHICLES_FOLDER, f)) and "png" in f]
-    assert len(onlyfiles) == NUM_FILES, "Not the full VEDAI 1024 Dataset"
-    rgb = []
-    infra = []
+    #     assert len(onlyfiles) == NUM_FILES, "Not the full VEDAI 1024 Dataset"
+    rgb = np.zeros((MAX_INDEX, X_PIXELS, Y_PIXELS, 3))
+    infra = np.zeros((MAX_INDEX, X_PIXELS, Y_PIXELS, 1))
     indices = [format(n, '08') for n in range(MAX_INDEX)]
-    missing_offset = 0
+    export_files = []
+    for index in indices:
+        pair = [file for file in onlyfiles if str(index) in file]
+        if pair:
+            for file in pair:
+                im = imageio.imread(PATH_TO_VEHICLES_FOLDER + '/' + file)
+                if "co" in file:
+                    export_files.append(file.split('_')[0])
+                    rgb[int(index), :, :, :] = np.reshape(
+                        im, (tuple([1]) + im.shape))
+                elif "ir" in file:
+                    infra[int(index), :, :, :] = np.reshape(
+                        im, (tuple([1]) + im.shape + tuple([1])))
+        else:
+            print("The following image is missing!: " + index)
+    np.savetxt(PATH_TO_VEHICLES_FOLDER + 'summary.txt', export_files, delimiter=" ", fmt="%s")
+    return rgb, infra, export_files
+
+
+def read_VEDAI(subset, PATH_TO_VEHICLES_FOLDER):
+    # Takes in the full path to the unzipped "VEHICULES" folder
+    # Returns mapping dict, RGB and Infrared images in (images, x, y, channels) format,
+    # saves a txt file with mapping of rgb/infra idx to filename
+    NUM_FILES = 2536
+    #     MAX_INDEX = 1272
+    MAX_INDEX = 10
+    X_PIXELS = 1024
+    Y_PIXELS = 1024
+    PATH_TO_VEHICLES_FOLDER = PATH_TO_VEHICLES_FOLDER[0]
+
+    onlyfiles = [f for f in listdir(PATH_TO_VEHICLES_FOLDER) if isfile(
+        join(PATH_TO_VEHICLES_FOLDER, f)) and "png" in f]
+    #     assert len(onlyfiles) == NUM_FILES, "Not the full VEDAI 1024 Dataset"
+    rgb = np.zeros((len(subset), X_PIXELS, Y_PIXELS, 3))
+    infra = np.zeros((len(subset), X_PIXELS, Y_PIXELS, 1))
+    indices = subset
+
+    print(indices)
+    print(rgb.shape)
+    index_filename_map = {}
+    im_cnt = 0
+
+    for index in indices:
+        pair = [file for file in onlyfiles if str(index) in file]
+        if pair:
+            for file in pair:
+                index_filename_map[im_cnt] = file.split('_')[0]
+                im = imageio.imread(PATH_TO_VEHICLES_FOLDER + '/' + file)
+                if "co" in file:
+                    # print('Inserting RGB @ '+ str(im_cnt))
+                    rgb[im_cnt, :, :, :] = np.reshape(
+                        im, (tuple([1]) + im.shape))
+                elif "ir" in file:
+                    # print('Inserting Infra @ '+ str(im_cnt))
+                    infra[im_cnt, :, :, :] = np.reshape(
+                        im, (tuple([1]) + im.shape + tuple([1])))
+            im_cnt = im_cnt + 1
+        else:
+            print("The following image is missing!: " + index)
+    # print(index_filename_map)
+    f = open(PATH_TO_VEHICLES_FOLDER + "_mapping.txt", "w")
+    f.write(str(index_filename_map))
+    f.close()
+    return rgb, infra
+
+
+def scan_dataset(PATH_TO_VEHICLES_FOLDER):
+    # Takes in the full path to the unzipped "VEHICULES" folder
+    # Returns a list of all the files and saves a dataset summary text file with list of all file names
+    MAX_INDEX = 10
+    PATH_TO_VEHICLES_FOLDER = PATH_TO_VEHICLES_FOLDER[0]
+    indices = [format(n, '08') for n in range(MAX_INDEX)]
+    export_files = []
+
+    onlyfiles = [f for f in listdir(PATH_TO_VEHICLES_FOLDER) if isfile(
+        join(PATH_TO_VEHICLES_FOLDER, f)) and "png" in f]
+
     for index in indices:
         pair = [file for file in onlyfiles if str(index) in file]
         if pair:
             for file in pair:
                 if "co" in file:
-                    rgb[int(index) - missing_offset] = file
-                elif "ir" in file:
-                    infra[int(index) - missing_offset] = file
+                    export_files.append(file.split('_')[0])
         else:
             print("The following image is missing!: " + index)
-            missing_offset += 1
-    assert len(rgb) == len(infra), "Not every file has its pair!"
-    assert len(rgb) == NUM_FILES / 2, "Didn't save every image."
-    return rgb, infra
+    np.savetxt(PATH_TO_VEHICLES_FOLDER + '_summary.txt', export_files, delimiter=" ", fmt="%s")
+    return export_files
 
+
+def create_subsets(imgs, output_path, use_validation=True, training_percent=0.7, testing_percent=0.3, SEED=1):
+    # Takes a list of image file names and shuffles them before splitting them into required subsets
+    # Saves txt files containing the names of the files used in each subset, no return value
+    assert training_percent + testing_percent == 1, "Training + testing percents must equal 1."
+    random.seed(SEED)
+    random.shuffle(imgs)
+    print('Using ' + str(len(imgs)) + ' images.')
+    print('Saving files to ' + output_path)
+    if not use_validation:
+        training_imgs = imgs[:int(len(imgs) * training_percent)]
+        testing_imgs = imgs[int(len(imgs) * training_percent):]
+        np.savetxt(output_path + 'training.txt', training_imgs, delimiter=" ", fmt="%s")
+        np.savetxt(output_path + 'testing.txt', testing_imgs, delimiter=" ", fmt="%s")
+        return training_imgs, testing_imgs
+    else:
+        validation_split = 0.3  # use 30% of training dataset for validation
+        training_imgs = imgs[int(len(imgs) * validation_split * training_percent):int(len(imgs) * training_percent)]
+        validation_imgs = imgs[:int(len(imgs) * validation_split * training_percent)]
+        testing_imgs = imgs[int(len(imgs) * training_percent):]
+        np.savetxt(output_path + 'validation.txt', validation_imgs, delimiter=" ", fmt="%s")
+        np.savetxt(output_path + 'training.txt', testing_imgs, delimiter=" ", fmt="%s")
+        np.savetxt(output_path + 'testing.txt', testing_imgs, delimiter=" ", fmt="%s")
+        return training_imgs, validation_imgs, testing_imgs
 
 def save_VEDAI(rgb, infra):
     # Takes in arrays of rgb and infrared images
