@@ -1,3 +1,4 @@
+# %load DenseSRGAN.py
 import tensorflow as tf
 from keras.layers import Input, concatenate, Conv2D, Conv2DTranspose
 from keras.layers.core import Dense, Dropout, Activation, Flatten
@@ -12,7 +13,7 @@ class DenseSRGAN:
   def __init__(self, hr_img_size=(64,64,4), down_factor=4,
                num_layers_in_blk = 5, num_dense_blks=2,
                growth_rate=16, num_filters=64,
-               dropout_rate=0.0, weight_decay=1e-4,weights_path=None):
+               dropout_rate=0.2, weight_decay=1e-4,weights_path=None):
     
     # Batch Norm Epsillon
     self.eps = 1.1e-5
@@ -43,9 +44,18 @@ class DenseSRGAN:
     # Initialize
     self.build_models()
     
-    # TODO: Things
-    # 1. Load Data - Grab a DataLoader object if possible
-    #    Create a local instance of loader to use in training
+    # TODO: Things (Not in order of importance)
+    # 1. Load Data - Currently data is loaded outside then passed
+    #    to the train function. Might be better to:
+    #    a. Pass data to the constructor in order to get
+    #       the input size before building the network
+    # 2. Fix training function to do the useful things:
+    #    a. Need to add additional loss functions 
+    #       PSNR and maybe feature matching (ie VGG pretrain)
+    #    b. like save a benchmark image on interval ie epoch
+    #    c. Add a validation loss and early stopping
+    # 3. Review network architecture from paper especially
+    #    input/output layers ie input C3 and output FCN C1
 
   def train(self, datahr, datalr, epochs=1, batch_size=16, callbacks=None, save_interval=0):
     
@@ -85,8 +95,11 @@ class DenseSRGAN:
             log_mesg = "%s  [A loss: %f, acc: %f]" % (log_mesg, a_loss[0], a_loss[1])
             
             # Print loss, call callbacks, save benchmarks if interval, etc...
-            print(log_mesg)
-     
+ 
+        
+        print(log_mesg)
+        self.G.save("generator_weights.h5")
+        
       
       
   def show_size(self):
@@ -134,8 +147,8 @@ class DenseSRGAN:
     
     self.D = Model(hr_input, x, name='discriminator')
     
-    if self.weights_path is not None:
-      self.D.load_weights(self.weigths_path)
+    #if self.weights_path is not None:
+    #  self.D.load_weights(self.weigths_path)
     
     return self.D
     
@@ -192,7 +205,7 @@ class DenseSRGAN:
     self.G = Model(lr_input, x, name='generator')
     
     if self.weights_path is not None:
-      self.G.load_weights(self.weigths_path)
+      self.G.load_weights(self.weights_path)
     
     return self.G
   
