@@ -21,7 +21,7 @@ def read_VEDAI(subset, PATH_TO_VEHICLES_FOLDER):
     # MAX_INDEX = 1272
     X_PIXELS = 1024
     Y_PIXELS = 1024
-    PATH_TO_VEHICLES_FOLDER = PATH_TO_VEHICLES_FOLDER[0]
+    #PATH_TO_VEHICLES_FOLDER = PATH_TO_VEHICLES_FOLDER[0]
 
     onlyfiles = [f for f in listdir(PATH_TO_VEHICLES_FOLDER) if isfile(
         join(PATH_TO_VEHICLES_FOLDER, f)) and "png" in f]
@@ -64,12 +64,12 @@ def scan_dataset(PATH_TO_VEHICLES_FOLDER):
     # Returns a list of all the files
     # and saves a dataset summary text file with list of all file names
     MAX_INDEX = 10
-    PATH_TO_VEHICLES_FOLDER = PATH_TO_VEHICLES_FOLDER[0]
+    #PATH_TO_VEHICLES_FOLDER = PATH_TO_VEHICLES_FOLDER[0]
     indices = [format(n, '08') for n in range(MAX_INDEX)]
     export_files = []
 
-    onlyfiles = [f for f in listdir(PATH_TO_VEHICLES_FOLDER) if isfile(
-        join(PATH_TO_VEHICLES_FOLDER, f)) and "png" in f]
+    onlyfiles = [f for f in listdir(PATH_TO_VEHICLES_FOLDER) \
+                if isfile(join(PATH_TO_VEHICLES_FOLDER, f)) and "png" in f]
 
     for index in indices:
         pair = [file for file in onlyfiles if str(index) in file]
