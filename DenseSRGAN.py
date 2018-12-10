@@ -4,11 +4,12 @@ from keras.layers.core import Dense, Dropout, Activation, Flatten
 from keras.layers.normalization import BatchNormalization
 from keras.models import Model, Sequential
 from keras.optimizers import Adam, RMSprop
+import numpy as np
 import DenseBlock as db # import functions to build dense blocks
 
 class DenseSRGAN:
-	
-  def __init__(self,hr_img_size=(64,64,4), down_factor=4,
+    
+  def __init__(self, hr_img_size=(64,64,4), down_factor=4,
                num_layers_in_blk = 5, num_dense_blks=2,
                growth_rate=16, num_filters=64,
                dropout_rate=0.0, weight_decay=1e-4,weights_path=None):
@@ -40,41 +41,67 @@ class DenseSRGAN:
     self.DM                = None
     
     # Initialize
-    self.discriminator()
-    self.generator()
-    self.discriminator_model()
-    self.adversarial_model()
-    
+    self.build_models()
     
     # TODO: Things
     # 1. Load Data - Grab a DataLoader object if possible
     #    Create a local instance of loader to use in training
 
-  def train(self, epochs=10, batch_size=16, callbacks=None, save_interval=0):
+  def train(self, datahr, datalr, epochs=1, batch_size=16, callbacks=None, save_interval=0):
+    
+    # Shuffle data indices    
+    num_train = len(datahr)
+    idx = np.random.permutation(list(range(num_train - 1)))
+    # TODO: This just throws away the remaining expamples if not batch_size not divisor of num_train
+    num_batches = num_train/batch_size if num_train%batch_size == 0 else num_train/batch_size - 1
+    num_batches = int(num_batches)
+    
     # if save_interval > 0: grab and hold a random lr input for benchmarking
-    
-    # Grab batch_size images from training data both lr and hr
-    
-    # generate fake hr images with generator.predict(lr_imgs) size of batch
-    
-    # concat real training imgs and fake gen images for discriminator training and labels
-    
-    # get discriminator loss and train_on_batch(x,y)
-    
-    # Grab another batch_size of images just for end to end training for adversarial model self.AM
-    
-    # Print loss, call callbacks, save benchmarks if interval, etc...
-    print('training....')
+    if save_interval > 0:
+        bench_idx = np.random.randint(1,num_train - 1,1)
+        
+    for epoch in range(epochs):
+        # Grab batch_size images from training data both lr and hr
+        for batch_idx in range(num_batches):
+            bix_begin = batch_idx
+            bix_end   = batch_idx + batch_size
+            
+            # generate fake hr images with generator.predict(lr_imgs) size of batch
+            batch_lr = datalr[bix_begin:bix_end,:,:,:]
+            batch_hr = datahr[bix_begin:bix_end,:,:,:]
+            fake_hr = self.G.predict(batch_lr)
+            x_tr = np.concatenate((batch_hr,fake_hr))
+            y_tr = np.ones([len(x_tr),1])
+            y_tr[batch_size:] = 0 
+            
+            # Train the discriminator alone
+            d_loss = self.DM.train_on_batch(x_tr,y_tr)
+            
+             # Grab another batch_size of images just for end to end training for adversarial model self.AM
+            y_tr = np.ones([batch_size, 1])
+            x_tr = batch_lr
+            a_loss = self.AM.train_on_batch(x_tr, y_tr)
+            log_mesg = "%d: [D loss: %f, acc: %f]" % (batch_idx, d_loss[0], d_loss[1])
+            log_mesg = "%s  [A loss: %f, acc: %f]" % (log_mesg, a_loss[0], a_loss[1])
+            
+            # Print loss, call callbacks, save benchmarks if interval, etc...
+            print(log_mesg)
      
       
       
   def show_size(self):
     print("W: {0} / H: {1} / C: {2}".format(self.imhr_w,self.imhr_h,self.imhr_c))
+  
+  def get_summary(self):
+        if self.D is not None:
+            self.D.summary()
+        if self.G is not None:
+            self.G.summary()
     
   '''Discriminator Archicture
       Generate the discriminator model
   '''
-  def discriminator(self):
+  def init_discriminator(self):
     # If already defined return
     if self.D:
       return self.D
@@ -106,7 +133,6 @@ class DenseSRGAN:
     x = Activation('sigmoid', name=base_name + '_sigmoid')(x)
     
     self.D = Model(hr_input, x, name='discriminator')
-    #self.D.summary()
     
     if self.weights_path is not None:
       self.D.load_weights(self.weigths_path)
@@ -118,7 +144,7 @@ class DenseSRGAN:
   '''Generator Archicture
       Generate the generator model
   '''
-  def generator(self):
+  def init_generator(self):
     # Inital number of feature maps
     num_filts = self.num_filters
     
@@ -164,37 +190,36 @@ class DenseSRGAN:
     x = Activation('sigmoid', name=base_name + '_sigmoid')(x)
     
     self.G = Model(lr_input, x, name='generator')
-    self.G.summary()
     
     if self.weights_path is not None:
       self.G.load_weights(self.weigths_path)
     
     return self.G
   
-  '''Compile Discriminator Archicture
-      TODO: it
-  '''
-  def discriminator_model(self):
-      if self.DM:
-          return self.DM
-      optimizer = RMSprop(lr=0.0002, decay=6e-8)
-      self.DM = Sequential()
-      self.DM.add(self.discriminator())
-      self.DM.compile(loss='binary_crossentropy', optimizer=optimizer,\
-          metrics=['accuracy'])
-      return self.DM
-      
-  '''Compile Generator Archicture
-      TODO: it
-  '''
-  def adversarial_model(self):
-      if self.AM:
-          return self.AM
-      optimizer = RMSprop(lr=0.0001, decay=3e-8)
-      self.AM = Sequential()
-      self.AM.add(self.G)
-      self.AM.add(self.D)
-      self.AM.compile(loss='binary_crossentropy', optimizer=optimizer,\
-          metrics=['accuracy'])
-      return self.AM
     
+    
+  def build_models(self):
+    
+    lr    = 2e-4
+    decay = 6e-6
+    
+    # Initialize architectures
+    self.init_discriminator()
+    self.init_generator()
+    
+    # Build Discriminator Model
+    optimizer = RMSprop(lr=lr, decay=decay)
+    self.DM = Sequential()
+    self.DM.add(self.D)
+    self.DM.compile(loss='binary_crossentropy',
+                             optimizer = optimizer,
+                             metrics=['accuracy'])
+    
+    optimizer = RMSprop(lr=lr/2, decay=decay)
+    self.D.trainable = False
+    self.AM = Sequential()
+    self.AM.add(self.G)
+    self.AM.add(self.D)
+    self.AM.compile(loss='binary_crossentropy',
+                    optimizer=optimizer,
+                    metrics=['accuracy'])
