@@ -7,10 +7,10 @@ utils.py contains scripts to import data and do some basic processing
 1. Install G-Cloud CLI SDK <br>
 https://cloud.google.com/sdk/ <br>
 2. Save the instance name<br>
-MAC:```export INSTANCE_NAME="tensorflow-1-vm"``` <br>
+MAC:```export INSTANCE_NAME="ece285-tf-gpu-vm"``` <br>
 3. Connect to the instance <br>
 MAC:```gcloud compute ssh $INSTANCE_NAME -- -L 8080:localhost:8080``` <br>
-WINDOWS:```gcloud compute ssh tensorflow-1-vm -- -L 8080:localhost:8080``` <br>
+WINDOWS:```gcloud compute ssh ece285-tf-gpu-vm -- -L 8080:localhost:8080``` <br>
 4. Open Jupyter notebook in browser by visiting:<br>
 localhost:8080 <br>
 
