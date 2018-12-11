@@ -4,7 +4,7 @@ from keras.layers import Input, concatenate, Conv2D, Conv2DTranspose
 from keras.layers.core import Dense, Dropout, Activation, Flatten
 from keras.layers.normalization import BatchNormalization
 from keras.models import Model, Sequential
-from keras.optimizers import Adam, RMSprop
+from keras.optimizers import Adam, SGD
 import numpy as np
 import DenseBlock as db # import functions to build dense blocks
 
@@ -213,7 +213,8 @@ class DenseSRGAN:
     
   def build_models(self):
     
-    lr    = 2e-4
+    lr_disc = 1e-4
+    lr_adv = 1e-2
     decay = 6e-6
     
     # Initialize architectures
@@ -221,14 +222,14 @@ class DenseSRGAN:
     self.init_generator()
     
     # Build Discriminator Model
-    optimizer = RMSprop(lr=lr, decay=decay)
+    optimizer = SGD(lr=lr_disc, decay=decay, nesterov=True)
     self.DM = Sequential()
     self.DM.add(self.D)
     self.DM.compile(loss='binary_crossentropy',
                              optimizer = optimizer,
                              metrics=['accuracy'])
     
-    optimizer = RMSprop(lr=lr/2, decay=decay)
+    optimizer = ADAM(lr=lr_adv, amsgrad=True)
     self.D.trainable = False
     self.AM = Sequential()
     self.AM.add(self.G)

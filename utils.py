@@ -14,7 +14,7 @@ def normalize(image):
 
 def read_VEDAI(subset, PATH_TO_VEHICLES_FOLDER):
     # Takes in the full path to the unzipped "VEHICULES" folder
-    # Returns mapping dict, RGB and Infrared images in 
+    # Returns mapping dict, RGB and Infrared images in
     # (images, x, y, channels) format,
     # saves a txt file with mapping of rgb/infra idx to filename
     # NUM_FILES = 2536
@@ -68,8 +68,8 @@ def scan_dataset(PATH_TO_VEHICLES_FOLDER):
     indices = [format(n, '08') for n in range(MAX_INDEX)]
     export_files = []
 
-    onlyfiles = [f for f in listdir(PATH_TO_VEHICLES_FOLDER) \
-                if isfile(join(PATH_TO_VEHICLES_FOLDER, f)) and "png" in f]
+    onlyfiles = [f for f in listdir(PATH_TO_VEHICLES_FOLDER)
+                 if isfile(join(PATH_TO_VEHICLES_FOLDER, f)) and "png" in f]
 
     for index in indices:
         pair = [file for file in onlyfiles if str(index) in file]
@@ -91,7 +91,7 @@ def create_subsets(imgs, output_path, use_validation=True,
     # Saves txt files containing the names of the files
     # used in each subset, no return value
     assert training_percent + \
-           testing_percent == 1, "Training + testing percents must equal 1."
+        testing_percent == 1, "Training + testing percents must equal 1."
     random.seed(SEED)
     random.shuffle(imgs)
     print('Using ' + str(len(imgs)) + ' images.')
@@ -180,7 +180,7 @@ def non_overlapping_patches(image, patch_size=(64, 64)):
             x_s = i * patch_x
             y_s = j * patch_y
             patches[counter, :, :, :] = im_pad[x_s:x_s + patch_x,
-                                        y_s:y_s + patch_y, :]
+                                               y_s:y_s + patch_y, :]
             counter += 1
     return patches
 
