@@ -14,7 +14,7 @@ import DenseBlock as db # import functions to build dense blocks
 
 class DenseSRGAN:
     
-  def __init__(self, datahr, datalr, num_gpus=1,
+  def __init__(self, dir_pfx, datahr, datalr, num_gpus=1,
                hr_img_size=(64,64,4), down_factor=4,
                num_layers_in_blk = 5, num_dense_blks=2,
                growth_rate=16, num_filters=64,
@@ -23,6 +23,8 @@ class DenseSRGAN:
     # Batch Norm Epsillon
     self.eps = 1.1e-5
     
+    self.dir_pfx           = dir_pfx
+
     self.num_gpus          = num_gpus
     
     self.datahr            = datahr
@@ -380,7 +382,7 @@ class DenseSRGAN:
             # Print loss, call callbacks, save benchmarks if interval, etc...
             #print(log_mesg)
             running_loss.append([epoch] + [batch_idx] + list(d_loss_hr) + list(d_loss_gen) + list(a_loss))
-            np.save(dir_pfx + 'loss_log.npy', arr=np.array(running_loss))
+            np.save(self.dir_pfx + 'loss_log.npy', arr=np.array(running_loss))
             
             #if batch_idx % save_interval:
  
@@ -399,9 +401,9 @@ class DenseSRGAN:
             plt.imshow(bench_hr.squeeze())
             plt.subplot(1,2,2)
             plt.imshow(img)
-            plt.savefig('{0}images/bench_epoch_{1}'.format(dir_pfx,epoch))
+            plt.savefig('{0}images/bench_epoch_{1}'.format(self.dir_pfx,epoch))
         
         if epoch%10 == 0:
             print('Epoch: {0}'.format(epoch))
-            self.gen.save(dir_pfx + 'weights/generator_weights.h5')
-            self.disc.save(dir_pfx + 'weights/discriminator_weights.h5')
+            self.gen.save(self.dir_pfx + 'weights/generator_weights.h5')
+            self.disc.save(self.dir_pfx + 'weights/discriminator_weights.h5')
