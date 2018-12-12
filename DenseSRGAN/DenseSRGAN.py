@@ -8,8 +8,8 @@ from keras.models import Model, Sequential
 from keras.optimizers import Adam, RMSprop
 from keras.utils.training_utils import multi_gpu_model
 from keras.callbacks import TensorBoard
-
 import numpy as np
+import matplotlib.pyplot as plt
 import DenseBlock as db # import functions to build dense blocks
 
 class DenseSRGAN:
@@ -382,7 +382,7 @@ class DenseSRGAN:
             # Print loss, call callbacks, save benchmarks if interval, etc...
             #print(log_mesg)
             running_loss.append([epoch] + [batch_idx] + list(d_loss_hr) + list(d_loss_gen) + list(a_loss))
-            np.save(self.dir_pfx + 'loss_log.npy', arr=np.array(running_loss))
+            np.save(self.dir_pfx + 'loss_logging/loss_log.npy', arr=np.array(running_loss))
             
             #if batch_idx % save_interval:
  
