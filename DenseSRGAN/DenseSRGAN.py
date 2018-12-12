@@ -305,7 +305,8 @@ class DenseSRGAN:
   ''' TRAIN '''
   def train(self, datahr=None, datalr=None,
             epochs=1, batch_size=16, callbacks=None,
-            save_interval=1,verbose=False):
+            save_interval=1, bench_idx=None,
+            verbose=False):
      
     #datahr = self.datahr if datahr is None else datahr
     #datalr = self.datalr if datalr is None else datalr
@@ -320,9 +321,11 @@ class DenseSRGAN:
     
     # if save_interval > 0: grab and hold a random lr input for benchmarking
     if save_interval > 0:
-        bench_idx = np.random.randint(1,num_train - 1,1)
-        bench_lr  = self.datalr[bench_idx,:,:,:]
-        bench_hr  = self.datahr[bench_idx,:,:,:]
+
+        if bench_idx is None:
+            bench_idx = np.random.randint(1,num_train - 1,1)
+            bench_lr  = self.datalr[bench_idx,:,:,:]
+            bench_hr  = self.datahr[bench_idx,:,:,:]
         
     for epoch in range(epochs):
         
