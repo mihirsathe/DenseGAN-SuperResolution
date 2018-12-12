@@ -324,8 +324,9 @@ class DenseSRGAN:
 
         if bench_idx is None:
             bench_idx = np.random.randint(1,num_train - 1,1)
-            bench_lr  = self.datalr[bench_idx,:,:,:]
-            bench_hr  = self.datahr[bench_idx,:,:,:]
+            
+        bench_lr  = self.datalr[bench_idx,:,:,:]
+        bench_hr  = self.datahr[bench_idx,:,:,:]
         
     for epoch in range(epochs):
         
