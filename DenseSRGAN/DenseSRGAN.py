@@ -393,7 +393,7 @@ class DenseSRGAN:
         if save_interval > 0:
             #print(bench_hr.shape)
             #print(bench_lr.shape)
-            img = gan.gen.predict(bench_lr).squeeze()
+            img = self.gen.predict(bench_lr).squeeze()
             img = (img + 1)/2
             plt.ioff()
             plt.figure().suptitle('HR + Prediction: Epoch {0}'.format(epoch), fontsize=20)
