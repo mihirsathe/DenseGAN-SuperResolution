@@ -239,9 +239,9 @@ class DenseSRGAN:
     
     if self.weights_path is not None:
       self.gen.load_weights(self.weights_path +
-                            'weights/generator_weights.h5')
+                            'generator_weights.h5')
       self.disc.load_weights(self.weights_path +
-                             'weights/discriminator_weights.h5')
+                             'discriminator_weights.h5')
     
     # Create the model 
     if self.num_gpus > 1:
