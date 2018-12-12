@@ -10,6 +10,7 @@ from keras.utils.training_utils import multi_gpu_model
 from keras.callbacks import TensorBoard
 import numpy as np
 import matplotlib.pyplot as plt
+import datetime
 import DenseBlock as db # import functions to build dense blocks
 
 class DenseSRGAN:
@@ -304,7 +305,7 @@ class DenseSRGAN:
   ''' TRAIN '''
   def train(self, datahr=None, datalr=None,
             epochs=1, batch_size=16, callbacks=None,
-            save_interval=1):
+            save_interval=1,verbose=False):
      
     #datahr = self.datahr if datahr is None else datahr
     #datalr = self.datalr if datalr is None else datalr
@@ -339,7 +340,7 @@ class DenseSRGAN:
         #datalr = tf.gather(self.datalr,idx)
         #self.datalr = tf.random.shuffle(self.datalr)
         #self.datahr = tf.random.shuffle(self.datahr)
-        
+        epoch_start_time = datetime.datetime.now()
         # Grab batch_size images from training data both lr and hr
         for batch_idx in range(int(num_batches/2)): # Take 2 batches per round
             bix_begin = batch_idx*batch_size
@@ -348,20 +349,28 @@ class DenseSRGAN:
             # generate fake hr images with generator.predict(lr_imgs) size of batch
             #batch_lr = datalr[bix_begin:bix_end,:,:,:]
             #batch_hr = datahr[bix_begin:bix_end,:,:,:]
+            ti = datetime.datetime.now()
+            if verbose: print('Start Shuffling data...')
             batch_lr = np.array([self.datalr[i,:,:,:] for i in idx[bix_begin:bix_end]])
             batch_hr = np.array([self.datahr[i,:,:,:] for i in idx[bix_begin:bix_end]])        
+            if verbose: print('Done shuffling. Time: {0}'.format(datetime.datetime.now() - ti))
             
-            
+            if verbose: print('Making Predictions...')
+            ti = datetime.datetime.now()
             x_gen = self.gen.predict(batch_lr)
+            if verbose: print('Done predicting. Time: {0}'.format(datetime.datetime.now() - ti))
+
             x_tr  = batch_hr
             #x_tr  = np.concatenate((batch_hr,x_gen))
             y_tr  = np.ones((len(x_tr),) + (4,4,1))
             y_gen = np.zeros((len(x_gen),) + (4,4,1)) 
             
-            #print('D Train Size: {0}'.format(x_tr.shape))
+            if verbose: print('Training Discriminator...')
+            ti = datetime.datetime.now()
             # Train the discriminator alone
             d_loss_hr  = self.disc_model.train_on_batch(x_tr, y_tr)
             d_loss_gen = self.disc_model.train_on_batch(x_gen, y_gen)
+            if verbose: print('Done training. Time: {0}'.format(datetime.datetime.now() - ti))      
             
             # Grab another batch_size of images just for end to end training for adversarial model self.adv_model
             bix_begin = bix_end
@@ -373,7 +382,12 @@ class DenseSRGAN:
             x_tr = batch_lr
             
             #print('GAN Train Size: {0}'.format(x_tr.shape))
+
+            if verbose: print('Training GAN...')
+            ti = datetime.datetime.now()
             a_loss = self.adv_model.train_on_batch(x_tr, y_tr)
+            if verbose: print('Done training GAN. Time: {0}'.format(datetime.datetime.now() - ti))   
+
             log_mesg = "%d:%d: [D loss_hr: %f, acc_hr: %f, loss_gen: %f, acc_gen: %f]" % \
                             (epoch, batch_idx, d_loss_hr[0], d_loss_hr[1], d_loss_gen[0], d_loss_gen[1])
             
@@ -385,8 +399,10 @@ class DenseSRGAN:
             np.save(self.dir_pfx + 'loss_logging/loss_log.npy', arr=np.array(running_loss))
             
             #if batch_idx % save_interval:
- 
+
+        print('Finished Epoch {0}... Time: {1}'.format(epoch, datetime.datetime.now()-epoch_start_time))
         print(log_mesg)
+
 
 
         # If save, save a pic
