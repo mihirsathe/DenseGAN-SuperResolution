@@ -5,7 +5,7 @@ from keras.layers.core import Dense, Dropout, Activation, Flatten
 from keras.layers.advanced_activations import PReLU, LeakyReLU
 from keras.layers.normalization import BatchNormalization
 from keras.models import Model, Sequential
-from keras.optimizers import Adam, RMSprop
+from keras.optimizers import Adam, SGD
 from keras.utils.training_utils import multi_gpu_model
 from keras.callbacks import TensorBoard
 import numpy as np
@@ -257,7 +257,7 @@ class DenseSRGAN:
     
     
     # Compile Discriminator Model
-    doptimizer = RMSprop(lr=lr, decay=decay, clipvalue=clip)
+    doptimizer = SGD(lr=lr, nesterov=True, clipvalue=clip)
     self.disc_model.compile(loss='mse',
                       optimizer=doptimizer,
                       metrics=['accuracy'])    
@@ -269,7 +269,7 @@ class DenseSRGAN:
     #                         metrics=['accuracy'])
 
     # Compile Adversarial Model
-    goptimizer = RMSprop(lr=lr/2, decay=decay, clipvalue=clip)
+    goptimizer = Adam(clipvalue=clip)
     self.disc.trainable = False
     im_lr = Input(shape=(self.imlr_w,self.imlr_h,self.im_c))
     im_hr = Input(shape=(self.imhr_w,self.imhr_h,self.im_c))
