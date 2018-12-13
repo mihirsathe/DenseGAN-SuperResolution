@@ -188,6 +188,8 @@ def non_overlapping_patches(image, patch_size=(64, 64)):
 def downsample_image(image, block=(4, 4, 1)):
     # Downsamples numpy array image by factor
     # Returns  the downsampled copy
+    if image.ndim == 4:
+        block = (1, 4, 4, 1)
     return downscale_local_mean(image, block)
 
 
@@ -196,6 +198,58 @@ def reconstruct_patches(patches, image_size):
     # when given patches created by non_overlapping_patches
     # Discards predictions for zero border
     pass
+
+
+def get_images_to_four_chan(img_name, DATASET_PATH, ch_num=4):
+    #co = imageio.imread(DATASET_PATH + 'VEDAI/' + img_name + '_co.png')
+    co = imageio.imread(DATASET_PATH + img_name + '_co.png')
+    if ch_num == 4:
+        #ir = imageio.imread(DATASET_PATH + 'VEDAI/' + img_name + '_ir.png')
+        ir = imageio.imread(DATASET_PATH + img_name + '_ir.png')
+        rgb = np.reshape(co, (tuple([1]) + co.shape))
+        infra = np.reshape(ir, (tuple([1]) + ir.shape + tuple([1])))
+        return combine_rgb_infra(rgb, infra)
+    elif ch_num == 3:
+        return np.reshape(co, (tuple([1]) + co.shape))
+
+
+def load_data(file_idx, txt_file, DATASET_PATH, batch_size=1):
+    # read in batch of file names from txt file with randomized filenames
+    # return the lr and hr patches
+
+    # read x lines from txt file
+    text_file = open(DATASET_PATH + "/training.txt", "r")
+    img_files = text_file.read().split('\n')
+    text_file.close()
+
+# TODO: preallocate arrays for speed
+    # Number of patches * ims_per_batch
+    batchsz = 256 * batch_size
+    # RGB
+    channels = 3
+    # Default patch size
+    patch_x, patch_y = 64, 64
+
+    # Preallocate arrays of the correct size
+    imgs_hr = np.zeros((batchsz, patch_x, patch_y, channels))
+
+    # Batch number * ims_per_batch
+    start = file_idx
+    end = file_idx + batch_size
+    #   print(start, end)
+
+    im_num = 0
+    for i in range(start, end):
+        st, stp = im_num * 256, (im_num + 1) * 256
+        im_num += 1
+        patch = overlapping_patches(
+            normalize(get_images_to_four_chan(img_files[i], DATASET_PATH, channels)))
+        imgs_hr[st:stp, :, :, :] = patch
+
+    imgs_lr = np.asarray([downsample_image(patch) for patch in imgs_hr])
+
+    file_idx = file_idx + batch_size  # update current file_idx
+    return imgs_hr, imgs_lr, file_idx
 
 
 class VEDAISequence(Sequence):
