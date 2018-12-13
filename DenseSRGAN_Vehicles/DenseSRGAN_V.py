@@ -6,7 +6,7 @@ from keras.layers.core import Dense, Dropout, Activation, Flatten
 from keras.layers.advanced_activations import PReLU, LeakyReLU
 from keras.layers.normalization import BatchNormalization
 from keras.models import Model, Sequential
-from keras.optimizers import Adam, RMSprop
+from keras.optimizers import Adam, RMSprop, SGD
 from keras.utils.training_utils import multi_gpu_model
 from keras.callbacks import TensorBoard
 import numpy as np
@@ -105,36 +105,6 @@ class DenseSRGAN_V:
     '''Discriminator Archicture
         Generate the discriminator model
     '''
-  
-    def init_discriminator_bu(self):
-    
-        def d_block(layer_input, filters, strides=1, bn=True):
-            """Discriminator layer"""
-            d = Conv2D(filters, kernel_size=3, strides=strides, padding='same')(layer_input)
-            d = LeakyReLU(alpha=0.2)(d)
-            if bn:
-                d = BatchNormalization(momentum=0.8)(d)
-            return d
-
-        d_fmaps = [64, 128, 256, 512] 
-        # Input img
-        hr = Input(shape=[self.imhr_w,self.imhr_h,self.im_c], name='highres_input')
-
-        d1 = d_block(hr, 16, bn=False)
-        d2 = d_block(d1, 16, strides=2)
-        d3 = d_block(d2, 64)
-        d4 = d_block(d3, 64, strides=2)
-        d5 = d_block(d4, 128)
-        d6 = d_block(d5, 128, strides=2)
-        d7 = d_block(d6, 512)
-        d8 = d_block(d7, 512, strides=2)
-
-        d9 = Dense(128)(d8)
-        d10 = LeakyReLU(alpha=0.2)(d9)
-        out = Dense(1, activation='sigmoid')(d10)
-
-        return Model(hr, out) 
-  
     def init_discriminator(self):
         # If already defined return
         if self.disc:
@@ -153,20 +123,24 @@ class DenseSRGAN_V:
                      padding='same', strides=(2,2),
                      name=base_name + '_conv', use_bias=False)(x)
             x = BatchNormalization(name=base_name + '_bn')(x)
-            x = Activation('relu', name=base_name + '_relu')(x)
+            x = LeakyReLU()(x)
+            # x = Activation('leaky_relu', name=base_name + '_lrelu')(x)
 
         # TODO: Fully Convolutional Output See Ref (same for discriminator) 3.4
         base_name = 'FC_out_' + str(i + 1)
 
         x = BatchNormalization(epsilon=self.eps, name=base_name + '_bn')(x)
-        x = Activation('relu', name=base_name + '_relu')(x)
+        x = LeakyReLU()(x)
+        #x = Activation('leaky_relu', name=base_name + '_lrelu')(x)
         x = Conv2D(16, (1, 1),
                    name=base_name + '_conv1', use_bias=False)(x)
         # Fix the dimension TODO: try to figure out the paper
         x = Dense(d_fmaps[0])(x)
-        x = Activation('relu', name=base_name + '_relu2')(x)
+#         x = Activation('leaky_relu', name=base_name + '_lrelu2')(x)
+        x = LeakyReLU()(x)
         x = Dense(1)(x)
-        x = Activation('relu', name=base_name + '_sigmoid')(x)
+        x = LeakyReLU()(x)
+#         x = Activation('leaky_relu', name=base_name + '_sigmoid')(x)
 
         return Model(hr_input, x, name='discriminator')
     
@@ -190,7 +164,7 @@ class DenseSRGAN_V:
         x = Conv2D(num_filts, (3,3), padding='same', name='init_conv', use_bias=False)(lr_input)
         # Batch Norm / Dropout / Max Pool / etc?? Paper S3.1 "C3" What??
         x = BatchNormalization(name='init_bn')(x)
-        x = Activation('relu', name='init_relu')(x)
+        x = LeakyReLU()(x)
 
         # TODO: Growth rate happens in dense block whereas in DenseNet growth 
         # occurs in transistion block. Paper 3.1 says growth in Dense Block. DONE
@@ -222,10 +196,12 @@ class DenseSRGAN_V:
         # TODO: Fully Convolutional Output See Ref (same for discriminator)    
         x = Conv2D(num_filts, (3,3), padding='same', name=base_name + '_c3x3s1', use_bias=False)(x)
         x = BatchNormalization(name=base_name + '_bn_1')(x)
-        x = Activation('relu', name=base_name + '_relu_1')(x)
+        x = LeakyReLU()(x)
+        #        x = Activation('leaky_relu', name=base_name + '_lrelu_1')(x)
         x = Conv2D(num_filts, (1,1), padding='same', name=base_name + '_c1x1s1', use_bias=False)(x)
         x = BatchNormalization(name=base_name + '_bn_2')(x)
-        x = Activation('relu', name=base_name + '_relu_2')(x)
+        x = LeakyReLU()(x)
+        #        x = Activation('leaky_relu', name=base_name + '_lrelu_2')(x)
 
         #x = BatchNormalization(epsilon=self.eps, name=base_name + '_bn')(x)
         #x = Activation('relu', name=base_name + '_relu')(x)
@@ -258,14 +234,10 @@ class DenseSRGAN_V:
         else:
             self.disc_model = self.disc
 
-
-
-
-
         # Compile Discriminator Model
-        doptimizer = RMSprop(lr=lr, decay=decay, clipvalue=clip)
+        # doptimizer = RMSprop(lr=lr, decay=decay, clipvalue=clip)
         self.disc_model.compile(loss='mse',
-                          optimizer=doptimizer,
+                          optimizer=SGD(lr=lr, nesterov=True, clipvalue=clip),
                           metrics=['accuracy'])    
 
         #self.disc_model = Sequential()
@@ -297,7 +269,7 @@ class DenseSRGAN_V:
 
         self.adv_model.compile(loss=['binary_crossentropy'],
                                #loss_weights=[1e-3,1],
-                               optimizer=goptimizer,
+                               optimizer=Adam(clipvalue=clip),
                                metrics=['accuracy'])
 
         #self.adv_model = Sequential()
@@ -317,13 +289,15 @@ class DenseSRGAN_V:
         #datahr = self.datahr if datahr is None else datahr
         #datalr = self.datalr if datalr is None else datalr
 
-
         running_loss = []
 
         # TODO: This just throws away the remaining expamples if not batch_size not divisor of num_train
         num_train   = len(self.datahr)
-        num_batches = num_train/batch_size if num_train%batch_size == 0 else num_train/batch_size - 1
-        num_batches = int(num_batches)
+        if batch_size == 1:
+            num_batches = 1
+        else:
+            num_batches = num_train/batch_size if num_train%batch_size == 0 else num_train/batch_size - 1
+            num_batches = int(num_batches)
 
         # if save_interval > 0: grab and hold a random lr input for benchmarking
         if save_interval > 0:
@@ -336,7 +310,8 @@ class DenseSRGAN_V:
 
         for epoch in range(epochs):
             # Shuffle the indices TODO: Shuffle batch in place
-            idx = np.random.permutation(list(range(num_train - 1)))
+            if batch_size != 1:
+                idx = np.random.permutation(list(range(num_train - 1)))
 
             # Gives error 
             # ValueError: If your data is in the form of symbolic tensors,
@@ -351,21 +326,30 @@ class DenseSRGAN_V:
             #self.datahr = tf.random.shuffle(self.datahr)
             epoch_start_time = datetime.datetime.now()
             # Grab batch_size images from training data both lr and hr
-            for batch_idx in range(int(num_batches/2)): # Take 2 batches per round
-                bix_begin = batch_idx*batch_size
-                bix_end   = bix_begin+batch_size
-
+            if batch_size == 1:
+                batches = 1;
+            else: 
+                batches = int(num_batches/2)
+            
+            for batch_idx in range(batches): # Take 2 batches per round
                 # generate fake hr images with generator.predict(lr_imgs) size of batch
                 #batch_lr = datalr[bix_begin:bix_end,:,:,:]
                 #batch_hr = datahr[bix_begin:bix_end,:,:,:]
-                ti = datetime.datetime.now()
-                if verbose: print('Start Shuffling data...')
-                batch_lr = np.array([self.datalr[i,:,:,:] for i in idx[bix_begin:bix_end]])
-                batch_hr = np.array([self.datahr[i,:,:,:] for i in idx[bix_begin:bix_end]])        
-                if verbose: print('Done shuffling. Time: {0}'.format(datetime.datetime.now() - ti))
+                if batch_size == 1:
+                    batch_lr = self.datalr
+                    batch_hr = self.datahr
+                else:
+                    bix_begin = batch_idx*batch_size
+                    bix_end   = bix_begin+batch_size
+                    ti = datetime.datetime.now()
+                    if verbose: print('Start Shuffling data...')
+                    batch_lr = np.array([self.datalr[i,:,:,:] for i in idx[bix_begin:bix_end]])
+                    batch_hr = np.array([self.datahr[i,:,:,:] for i in idx[bix_begin:bix_end]])        
+                    if verbose: print('Done shuffling. Time: {0}'.format(datetime.datetime.now() - ti))
 
                 if verbose: print('Making Predictions...')
                 ti = datetime.datetime.now()
+                print(batch_lr.shape)
                 x_gen = self.gen.predict(batch_lr)
                 if verbose: print('Done predicting. Time: {0}'.format(datetime.datetime.now() - ti))
 
@@ -392,10 +376,11 @@ class DenseSRGAN_V:
                 if verbose: print('Done training. Time: {0}'.format(datetime.datetime.now() - ti))      
 
                 # Grab another batch_size of images just for end to end training for adversarial model self.adv_model
-                bix_begin = bix_end
-                bix_end   = bix_begin + batch_size
-                #batch_lr = datalr[bix_begin:bix_end,:,:,:]
-                batch_lr = np.array([self.datalr[i,:,:,:] for i in idx[bix_begin:bix_end]])    
+                if batch_size != 1:
+                    bix_begin = bix_end
+                    bix_end   = bix_begin + batch_size
+                    #batch_lr = datalr[bix_begin:bix_end,:,:,:]
+                    batch_lr = np.array([self.datalr[i,:,:,:] for i in idx[bix_begin:bix_end]])    
 
                 y_tr = np.ones((batch_size,)+(4,4,1))
                 x_tr = batch_lr
