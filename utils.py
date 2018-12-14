@@ -5,8 +5,6 @@ import tensorflow as tf
 from os import listdir
 from os.path import isfile, join
 from skimage.transform import downscale_local_mean
-from sklearn.feature_extraction.image import reconstruct_from_patches_2d
-
 import random
 import imageio
 
@@ -202,11 +200,11 @@ def downsample_image(image, block=(4, 4, 1)):
     return downscale_local_mean(image, block)
 
 
-def reconstruct_patches(patches, image_size=(1024, 1024)):
+def reconstruct_patches(patches, image_size):
     # TODO: Create a function which reconstructs an image
-    # when given patches created by overlapping_patches
-    return reconstruct_from_patches_2d(patches, image_size)
-
+    # when given patches created by non_overlapping_patches
+    # Discards predictions for zero border
+    pass
 
 def get_images_to_four_chan(img_name, DATASET_PATH, ch_num=4):
   #co = imageio.imread(DATASET_PATH + 'VEDAI/' + img_name + '_co.png')
@@ -220,7 +218,7 @@ def get_images_to_four_chan(img_name, DATASET_PATH, ch_num=4):
   elif ch_num == 3:
     return np.reshape(co, (tuple([1]) + co.shape))
 
-def load_data_vehicles(DATASET_PATH, num_images, rgb=False, img_spec=None):
+def load_data_vehicles(DATASET_PATH, num_images, rgb=False, scale01=False, img_spec=None):
     # get all files from the directory
     onlyfiles = [f for f in listdir(DATASET_PATH) if isfile(
     join(DATASET_PATH, f)) and "png" in f]
@@ -250,7 +248,10 @@ def load_data_vehicles(DATASET_PATH, num_images, rgb=False, img_spec=None):
         co = imageio.imread(DATASET_PATH + onlyfiles[i])
         rgb = np.reshape(co, (tuple([1]) + co.shape))
         if rgb.shape == (1, 64, 64, 3):
-            imgs_hr[img_idx, :, :, :] = normalize(rgb)
+            if scale01:
+                imgs_hr[img_idx, :, :, :] = normalize01(rgb)
+            else:
+                imgs_hr[img_idx, :, :, :] = normalize(rgb)
             img_idx += 1
     imgs_lr = np.asarray([downsample_image(patch) for patch in imgs_hr])
     return imgs_hr, imgs_lr
