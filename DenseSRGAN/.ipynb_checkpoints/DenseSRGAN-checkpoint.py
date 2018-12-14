@@ -13,9 +13,18 @@ import matplotlib.pyplot as plt
 import datetime
 import DenseBlock as db # import functions to build dense blocks
 
+
+'''
+Args:
+weights_path: Path where weights are located. Two files exist in directory:
+              generator_weights.h5 and discriminator_weights.h5
+'''
+
+
 class DenseSRGAN:
     
-  def __init__(self, dir_pfx, datahr, datalr, gpu_list=None,
+  def __init__(self, dir_pfx, datahr, datalr,
+               proj_pfx=None, gpu_list=None,
                hr_img_size=(64,64,4), down_factor=4,
                num_layers_in_blk = 5, num_dense_blks=2,
                growth_rate=16, num_filters=64,
@@ -26,7 +35,8 @@ class DenseSRGAN:
     self.eps = 1.1e-5
     
     self.dir_pfx           = dir_pfx
-
+    self.proj_pfx          = proj_pfx
+    
     self.gpu_list          = gpu_list
     
     self.datahr            = datahr
@@ -74,9 +84,7 @@ class DenseSRGAN:
     
     # Training states
     self.epoch             = num_epochs_trained
-    
-    print(self.epoch)
-    
+        
     if self.epoch > 0:
         assert weights_path is not None, 'If resuming model, please set weights_path'
     
@@ -141,7 +149,7 @@ class DenseSRGAN:
     x = Dense(d_fmaps[0])(x)
     x = Activation('relu', name=base_name + '_relu2')(x)
     x = Dense(1)(x)
-    x = Activation('sigmoid', name=base_name + '_sigmoid')(x)
+    x = Activation('relu', name=base_name + '_sigmoid')(x)
     
     return Model(hr_input, x, name='discriminator')
     
@@ -279,13 +287,18 @@ class DenseSRGAN:
             save_interval=10, view_interval=1, 
             bench_idx=None, verbose=False):
      
-    #datahr = self.datahr if datahr is None else datahr
-    #datalr = self.datalr if datalr is None else datalr
-    
+    # Use data is new data is passed in to train
+    if datahr is not None and datalr is not None:
+        self.datahr = datahr
+        self.datalr = datalr
+
+    # Get the subdirectoy prefix if proj_pfx
+    sub_dir = '' if self.proj_pfx is None else self.proj_pfx + '/'
+
     # Grab the current log if we are continuing training
     if self.epoch > 0:
-        loss_log_file = data_dir + 'loss_log_epoch.npy'
-        running_loss = np.load(loss_log_file)
+        loss_log_file = self.dir_pfx + 'loss_logging/' + sub_dir + 'loss_log.npy'
+        running_loss = np.load(loss_log_file).tolist()
     else:
         running_loss = []
         
@@ -308,7 +321,7 @@ class DenseSRGAN:
     start_epoch = self.epoch +  1
     end_epoch = start_epoch + epochs
         
-    for epoch in range(start_epoch, end_epoch+1):
+    for epoch in range(start_epoch, end_epoch):
         
         # Shuffle the indices TODO: Shuffle batch in place
         idx = np.random.permutation(list(range(num_train - 1)))
@@ -383,13 +396,13 @@ class DenseSRGAN:
             plt.imshow(bench_hr.squeeze())
             plt.subplot(1,2,2)
             plt.imshow(img)
-            plt.savefig('{0}images/bench_epoch_{1}'.format(self.dir_pfx,epoch))
+            plt.savefig('{0}images/{1}bench_epoch_{2}'.format(self.dir_pfx,sub_dir,epoch))
         
-        np.save(self.dir_pfx + 'loss_logging/loss_log.npy', arr=np.array(running_loss))
+        np.save(self.dir_pfx + 'loss_logging/' + sub_dir + 'loss_log.npy', arr=np.array(running_loss))
         
-        if epoch%10 == 0:
+        if epoch%save_interval == 0:
             print('Saving weights at epoch {0}'.format(epoch))
-            self.gen.save(self.dir_pfx + 'weights/generator_weights.h5')
-            self.disc.save(self.dir_pfx + 'weights/discriminator_weights.h5')
+            self.gen.save(self.dir_pfx + 'weights/' + sub_dir + 'generator_weights.h5')
+            self.disc.save(self.dir_pfx + 'weights/' + sub_dir + 'discriminator_weights.h5')
         
         self.epoch = epoch

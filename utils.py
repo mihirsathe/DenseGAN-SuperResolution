@@ -5,6 +5,8 @@ import tensorflow as tf
 from os import listdir
 from os.path import isfile, join
 from skimage.transform import downscale_local_mean
+from sklearn.feature_extraction.image import reconstruct_from_patches_2d
+
 import random
 import imageio
 
@@ -205,6 +207,11 @@ def reconstruct_patches(patches, image_size):
     # when given patches created by non_overlapping_patches
     # Discards predictions for zero border
     pass
+
+def reconstruct_patches(patches, image_size=(1024, 1024)):
+    # TODO: Create a function which reconstructs an image
+    # when given patches created by overlapping_patches
+    return reconstruct_from_patches_2d(patches, image_size)
 
 def get_images_to_four_chan(img_name, DATASET_PATH, ch_num=4):
   #co = imageio.imread(DATASET_PATH + 'VEDAI/' + img_name + '_co.png')

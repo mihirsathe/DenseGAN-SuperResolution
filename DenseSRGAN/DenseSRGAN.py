@@ -149,7 +149,7 @@ class DenseSRGAN:
     x = Dense(d_fmaps[0])(x)
     x = Activation('relu', name=base_name + '_relu2')(x)
     x = Dense(1)(x)
-    x = Activation('sigmoid', name=base_name + '_sigmoid')(x)
+    x = Activation('relu', name=base_name + '_sigmoid')(x)
     
     return Model(hr_input, x, name='discriminator')
     
