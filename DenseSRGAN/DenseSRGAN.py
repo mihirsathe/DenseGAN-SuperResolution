@@ -5,7 +5,7 @@ from keras.layers.core import Dense, Dropout, Activation, Flatten
 from keras.layers.advanced_activations import PReLU, LeakyReLU
 from keras.layers.normalization import BatchNormalization
 from keras.models import Model, Sequential
-from keras.optimizers import Adam, SGD
+from keras.optimizers import Adam, SGD, RMSprop
 from keras.utils.training_utils import multi_gpu_model
 from keras.callbacks import TensorBoard
 import numpy as np
@@ -15,7 +15,7 @@ import DenseBlock as db # import functions to build dense blocks
 
 class DenseSRGAN:
     
-  def __init__(self, dir_pfx, datahr, datalr, num_gpus=1,
+  def __init__(self, dir_pfx, datahr, datalr, gpu_list=None,
                hr_img_size=(64,64,4), down_factor=4,
                num_layers_in_blk = 5, num_dense_blks=2,
                growth_rate=16, num_filters=64,
@@ -100,35 +100,6 @@ class DenseSRGAN:
       Generate the discriminator model
   '''
   
-  def init_discriminator_bu(self):
-    
-    def d_block(layer_input, filters, strides=1, bn=True):
-      """Discriminator layer"""
-      d = Conv2D(filters, kernel_size=3, strides=strides, padding='same')(layer_input)
-      d = LeakyReLU(alpha=0.2)(d)
-      if bn:
-          d = BatchNormalization(momentum=0.8)(d)
-      return d
-
-    d_fmaps = [64, 128, 256, 512] 
-    # Input img
-    hr = Input(shape=[self.imhr_w,self.imhr_h,self.im_c], name='highres_input')
-
-    d1 = d_block(hr, 16, bn=False)
-    d2 = d_block(d1, 16, strides=2)
-    d3 = d_block(d2, 64)
-    d4 = d_block(d3, 64, strides=2)
-    d5 = d_block(d4, 128)
-    d6 = d_block(d5, 128, strides=2)
-    d7 = d_block(d6, 512)
-    d8 = d_block(d7, 512, strides=2)
-
-    d9 = Dense(128)(d8)
-    d10 = LeakyReLU(alpha=0.2)(d9)
-    out = Dense(1, activation='sigmoid')(d10)
-
-    return Model(hr, out) 
-  
   def init_discriminator(self):
     # If already defined return
     if self.disc:
@@ -160,7 +131,7 @@ class DenseSRGAN:
     x = Dense(d_fmaps[0])(x)
     x = Activation('relu', name=base_name + '_relu2')(x)
     x = Dense(1)(x)
-    x = Activation('relu', name=base_name + '_sigmoid')(x)
+    x = Activation('sigmoid', name=base_name + '_sigmoid')(x)
     
     return Model(hr_input, x, name='discriminator')
     
@@ -228,8 +199,6 @@ class DenseSRGAN:
 
     return Model(lr_input, x, name='generator')
 
-    
-    
   def build_models(self):
     
     lr    = 4e-4
@@ -247,29 +216,21 @@ class DenseSRGAN:
                              'discriminator_weights.h5')
     
     # Create the model 
-    if self.num_gpus > 1:
+    if self.num_gpus is not None:
       self.disc_model = multi_gpu_model(self.disc, gpus=self.num_gpus)
     else:
       self.disc_model = self.disc
-      
-      
-    
-    
-    
+
     # Compile Discriminator Model
-    doptimizer = SGD(lr=lr, nesterov=True, clipvalue=clip)
+    #doptimizer = SGD(lr=lr, nesterov=True, clipvalue=clip)
+    doptimizer = RMSprop(lr=lr, decay=decay, clipvalue=clip)
     self.disc_model.compile(loss='mse',
                       optimizer=doptimizer,
                       metrics=['accuracy'])    
-   
-    #self.disc_model = Sequential()
-    #self.disc_model.add(self.disc)
-    #self.disc_model.compile(loss='binary_crossentropy',
-    #                         optimizer = doptimizer,
-    #                         metrics=['accuracy'])
 
     # Compile Adversarial Model
-    goptimizer = Adam(clipvalue=clip)
+    #goptimizer = Adam(clipvalue=clip)
+    goptimizer = RMSprop(lr=lr/2, decay=decay, clipvalue=clip)
     self.disc.trainable = False
     im_lr = Input(shape=(self.imlr_w,self.imlr_h,self.im_c))
     im_hr = Input(shape=(self.imhr_w,self.imhr_h,self.im_c))
@@ -283,7 +244,7 @@ class DenseSRGAN:
     self.adv_model = Model(im_lr, disc_gen_hr)
 
     # Create the model 
-    if self.num_gpus > 1:
+    if self.num_gpus is not None:
       self.adv_model = multi_gpu_model(Model(im_lr, disc_gen_hr), gpus=self.num_gpus)
     else:
       self.adv_model = Model(im_lr, disc_gen_hr)    
@@ -305,8 +266,8 @@ class DenseSRGAN:
   ''' TRAIN '''
   def train(self, datahr=None, datalr=None,
             epochs=1, batch_size=16, callbacks=None,
-            save_interval=1, bench_idx=None,
-            verbose=False):
+            save_interval=1, view_interval=1, 
+            bench_idx=None, verbose=False):
      
     #datahr = self.datahr if datahr is None else datahr
     #datalr = self.datalr if datalr is None else datalr
@@ -334,18 +295,6 @@ class DenseSRGAN:
         
         # Shuffle the indices TODO: Shuffle batch in place
         idx = np.random.permutation(list(range(num_train - 1)))
-        
-        # Gives error 
-        # ValueError: If your data is in the form of symbolic tensors,
-        # you should specify the `steps` argument 
-        #(instead of the `batch_size` argument, 
-        #because symbolic tensors are expected to
-        #produce batches of input data).
-        #
-        #datahr = tf.gather(self.datahr,idx)
-        #datalr = tf.gather(self.datalr,idx)
-        #self.datalr = tf.random.shuffle(self.datalr)
-        #self.datahr = tf.random.shuffle(self.datahr)
         epoch_start_time = datetime.datetime.now()
         # Grab batch_size images from training data both lr and hr
         for batch_idx in range(int(num_batches/2)): # Take 2 batches per round
@@ -353,8 +302,6 @@ class DenseSRGAN:
             bix_end   = bix_begin+batch_size
 
             # generate fake hr images with generator.predict(lr_imgs) size of batch
-            #batch_lr = datalr[bix_begin:bix_end,:,:,:]
-            #batch_hr = datahr[bix_begin:bix_end,:,:,:]
             ti = datetime.datetime.now()
             if verbose: print('Start Shuffling data...')
             batch_lr = np.array([self.datalr[i,:,:,:] for i in idx[bix_begin:bix_end]])
@@ -381,7 +328,6 @@ class DenseSRGAN:
             # Grab another batch_size of images just for end to end training for adversarial model self.adv_model
             bix_begin = bix_end
             bix_end   = bix_begin + batch_size
-            #batch_lr = datalr[bix_begin:bix_end,:,:,:]
             batch_lr = np.array([self.datalr[i,:,:,:] for i in idx[bix_begin:bix_end]])    
             
             y_tr = np.ones((batch_size,)+(4,4,1))
@@ -402,21 +348,17 @@ class DenseSRGAN:
             # Print loss, call callbacks, save benchmarks if interval, etc...
             #print(log_mesg)
             running_loss.append([epoch] + [batch_idx] + list(d_loss_hr) + list(d_loss_gen) + list(a_loss))
-            np.save(self.dir_pfx + 'loss_logging/loss_log.npy', arr=np.array(running_loss))
-            
-            #if batch_idx % save_interval:
-
-        print('Finished Epoch {0}... Time: {1}'.format(epoch, datetime.datetime.now()-epoch_start_time))
-        print(log_mesg)
+ 
+        if epoch%view_interval == 0:
+            print('Finished Epoch {0}... Time: {1}'.format(epoch, datetime.datetime.now()-epoch_start_time))
+            print(log_mesg)
 
 
 
         # If save, save a pic
-        if save_interval > 0:
-            #print(bench_hr.shape)
-            #print(bench_lr.shape)
+        if epoch%save_interval == 0:
             img = self.gen.predict(bench_lr).squeeze()
-            img = (img + 1)/2
+            #img = (img + 1)/2
             plt.ioff()
             plt.figure().suptitle('HR + Prediction: Epoch {0}'.format(epoch), fontsize=20)
             plt.subplot(1,2,1)
@@ -425,7 +367,9 @@ class DenseSRGAN:
             plt.imshow(img)
             plt.savefig('{0}images/bench_epoch_{1}'.format(self.dir_pfx,epoch))
         
+        np.save(self.dir_pfx + 'loss_logging/loss_log.npy', arr=np.array(running_loss))
+        
         if epoch%10 == 0:
-            print('Epoch: {0}'.format(epoch))
+            print('Saving weights at epoch {0}'.format(epoch))
             self.gen.save(self.dir_pfx + 'weights/generator_weights.h5')
             self.disc.save(self.dir_pfx + 'weights/discriminator_weights.h5')

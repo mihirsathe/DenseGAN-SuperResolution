@@ -1,27 +1,32 @@
-import numpy as np
-import imageio
 from keras.utils import Sequence
+import numpy as np
+import tensorflow as tf
+
 from os import listdir
 from os.path import isfile, join
 from skimage.transform import downscale_local_mean
 import random
-import tensorflow as tf
-
+import imageio
 
 def normalize(image):
-    return image / 255.0
+    return (image - 127.5) / 127.5
 
+def normalize01(image):
+    return image/255
+
+def un_normalize(image):
+    return (image + 1) / 2
 
 def read_VEDAI(subset, PATH_TO_VEHICLES_FOLDER):
     # Takes in the full path to the unzipped "VEHICULES" folder
-    # Returns mapping dict, RGB and Infrared images in
+    # Returns mapping dict, RGB and Infrared images in 
     # (images, x, y, channels) format,
     # saves a txt file with mapping of rgb/infra idx to filename
     # NUM_FILES = 2536
     # MAX_INDEX = 1272
     X_PIXELS = 1024
     Y_PIXELS = 1024
-    #PATH_TO_VEHICLES_FOLDER = PATH_TO_VEHICLES_FOLDER[0]
+    PATH_TO_VEHICLES_FOLDER = PATH_TO_VEHICLES_FOLDER#[0]
 
     onlyfiles = [f for f in listdir(PATH_TO_VEHICLES_FOLDER) if isfile(
         join(PATH_TO_VEHICLES_FOLDER, f)) and "png" in f]
@@ -59,17 +64,17 @@ def read_VEDAI(subset, PATH_TO_VEHICLES_FOLDER):
     return rgb, infra
 
 
-def scan_dataset(PATH_TO_VEHICLES_FOLDER):
+def scan_dataset(PATH_TO_VEHICLES_FOLDER, number_of_imgs):
     # Takes in the full path to the unzipped "VEHICULES" folder
     # Returns a list of all the files
     # and saves a dataset summary text file with list of all file names
-    MAX_INDEX = 10
-    #PATH_TO_VEHICLES_FOLDER = PATH_TO_VEHICLES_FOLDER[0]
+    MAX_INDEX = number_of_imgs
+    PATH_TO_VEHICLES_FOLDER = PATH_TO_VEHICLES_FOLDER
     indices = [format(n, '08') for n in range(MAX_INDEX)]
     export_files = []
 
-    onlyfiles = [f for f in listdir(PATH_TO_VEHICLES_FOLDER)
-                 if isfile(join(PATH_TO_VEHICLES_FOLDER, f)) and "png" in f]
+    onlyfiles = [f for f in listdir(PATH_TO_VEHICLES_FOLDER) if isfile(
+        join(PATH_TO_VEHICLES_FOLDER, f)) and "png" in f]
 
     for index in indices:
         pair = [file for file in onlyfiles if str(index) in file]
@@ -81,6 +86,7 @@ def scan_dataset(PATH_TO_VEHICLES_FOLDER):
             print("The following image is missing!: " + index)
     np.savetxt(PATH_TO_VEHICLES_FOLDER + '_summary.txt',
                export_files, delimiter=" ", fmt="%s")
+
     return export_files
 
 
@@ -90,6 +96,7 @@ def create_subsets(imgs, output_path, use_validation=True,
     # them before splitting them into required subsets
     # Saves txt files containing the names of the files
     # used in each subset, no return value
+
     assert training_percent + \
         testing_percent == 1, "Training + testing percents must equal 1."
     random.seed(SEED)
@@ -146,7 +153,7 @@ def combine_rgb_infra(rgb, infra):
     four_channel = np.concatenate((rgb, infra), axis=-1)
     return four_channel
 
-
+  
 def overlapping_patches(images, patch_size=(64, 64), padding="VALID"):
     sess = tf.Session()
 
@@ -159,7 +166,7 @@ def overlapping_patches(images, patch_size=(64, 64), padding="VALID"):
     with sess.as_default():
         np = tf.reshape(patches, [tf.reduce_prod(patches_shape[0:3]),
                                   patch_x, patch_y, channels]).eval()
-        return np
+        return np  
 
 
 def non_overlapping_patches(image, patch_size=(64, 64)):
@@ -189,7 +196,7 @@ def downsample_image(image, block=(4, 4, 1)):
     # Downsamples numpy array image by factor
     # Returns  the downsampled copy
     if image.ndim == 4:
-        block = (1, 4, 4, 1)
+      block=(1, 4, 4, 1)
     return downscale_local_mean(image, block)
 
 
@@ -199,34 +206,67 @@ def reconstruct_patches(patches, image_size):
     # Discards predictions for zero border
     pass
 
-
 def get_images_to_four_chan(img_name, DATASET_PATH, ch_num=4):
-    #co = imageio.imread(DATASET_PATH + 'VEDAI/' + img_name + '_co.png')
-    co = imageio.imread(DATASET_PATH + img_name + '_co.png')
-    if ch_num == 4:
-        #ir = imageio.imread(DATASET_PATH + 'VEDAI/' + img_name + '_ir.png')
-        ir = imageio.imread(DATASET_PATH + img_name + '_ir.png')
+  #co = imageio.imread(DATASET_PATH + 'VEDAI/' + img_name + '_co.png')
+  co = imageio.imread(DATASET_PATH + img_name + '_co.png')
+  if ch_num == 4:
+    #ir = imageio.imread(DATASET_PATH + 'VEDAI/' + img_name + '_ir.png')
+    ir = imageio.imread(DATASET_PATH + img_name + '_ir.png')
+    rgb = np.reshape(co, (tuple([1]) + co.shape))
+    infra = np.reshape(ir, (tuple([1]) + ir.shape + tuple([1])))  
+    return combine_rgb_infra(rgb, infra)
+  elif ch_num == 3:
+    return np.reshape(co, (tuple([1]) + co.shape))
+
+def load_data_vehicles(DATASET_PATH, num_images, rgb=False, img_spec=None):
+    # get all files from the directory
+    onlyfiles = [f for f in listdir(DATASET_PATH) if isfile(
+    join(DATASET_PATH, f)) and "png" in f]
+    
+    if img_spec is not None:
+        assert img_spec < len(onlyfiles), "Image not found. Pick a smaller number."
+        tmp_path = onlyfiles[img_spec]
+        onlyfiles = list([tmp_path])
+        #onlyfiles = []
+        #onlyfiles.append(tmp_path)
+        print("using single image " + str(onlyfiles)) 
+    else:
+        assert num_images < len(onlyfiles), "Too many images. Pick a smaller number."
+        onlyfiles = onlyfiles[0:num_images]
+        print("using {0} images".format(num_images))
+    
+    channels = 3     # RGB
+    patch_x, patch_y = 64, 64  # patch size 
+    
+    # Preallocate array of the correct size
+    imgs_hr = np.zeros((len(onlyfiles), patch_x, patch_y, channels))
+    
+    print(len(onlyfiles))
+    
+    img_idx = 0
+    for i in range(len(onlyfiles)):
+        co = imageio.imread(DATASET_PATH + onlyfiles[i])
         rgb = np.reshape(co, (tuple([1]) + co.shape))
-        infra = np.reshape(ir, (tuple([1]) + ir.shape + tuple([1])))
-        return combine_rgb_infra(rgb, infra)
-    elif ch_num == 3:
-        return np.reshape(co, (tuple([1]) + co.shape))
+        if rgb.shape == (1, 64, 64, 3):
+            imgs_hr[img_idx, :, :, :] = normalize(rgb)
+            img_idx += 1
+    imgs_lr = np.asarray([downsample_image(patch) for patch in imgs_hr])
+    return imgs_hr, imgs_lr
 
 
-def load_data(file_idx, txt_file, DATASET_PATH, batch_size=1):
-    # read in batch of file names from txt file with randomized filenames
-    # return the lr and hr patches
-
-    # read x lines from txt file
-    text_file = open(DATASET_PATH + "/training.txt", "r")
-    img_files = text_file.read().split('\n')
+def load_data(file_idx, txt_file, DATASET_PATH, scale01=False, batch_size=1):
+  # read in batch of file names from txt file with randomized filenames
+  # return the lr and hr patches
+  
+    #read x lines from txt file
+    text_file = open(DATASET_PATH +"/training.txt", "r")
+    img_files = text_file.read().strip().split('\n')
     text_file.close()
 
-# TODO: preallocate arrays for speed
     # Number of patches * ims_per_batch
     batchsz = 256 * batch_size
     # RGB
-    channels = 3
+    channels = 4
     # Default patch size
     patch_x, patch_y = 64, 64
 
@@ -236,19 +276,24 @@ def load_data(file_idx, txt_file, DATASET_PATH, batch_size=1):
     # Batch number * ims_per_batch
     start = file_idx
     end = file_idx + batch_size
-    #   print(start, end)
+    #end = len(img_files)
+
 
     im_num = 0
     for i in range(start, end):
         st, stp = im_num * 256, (im_num + 1) * 256
-        im_num += 1
-        patch = overlapping_patches(
-            normalize(get_images_to_four_chan(img_files[i], DATASET_PATH, channels)))
+        im_num += 1 
+        img = get_images_to_four_chan(img_files[i], DATASET_PATH, channels)
+        if scale01:
+            img = normalize01(img)
+        else:
+            img = normalize(img)
+        patch = overlapping_patches(img)
         imgs_hr[st:stp, :, :, :] = patch
-
+        
     imgs_lr = np.asarray([downsample_image(patch) for patch in imgs_hr])
 
-    file_idx = file_idx + batch_size  # update current file_idx
+    file_idx = file_idx + batch_size # update current file_idx
     return imgs_hr, imgs_lr, file_idx
 
 
