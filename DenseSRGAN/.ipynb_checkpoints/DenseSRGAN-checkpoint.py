@@ -19,14 +19,15 @@ class DenseSRGAN:
                hr_img_size=(64,64,4), down_factor=4,
                num_layers_in_blk = 5, num_dense_blks=2,
                growth_rate=16, num_filters=64,
-               dropout_rate=0.2, weight_decay=1e-4,weights_path=None):
+               dropout_rate=0.2, weight_decay=1e-4,weights_path=None,
+               num_epochs_trained = 0):
     
     # Batch Norm Epsillon
     self.eps = 1.1e-5
     
     self.dir_pfx           = dir_pfx
 
-    self.num_gpus          = num_gpus
+    self.gpu_list          = gpu_list
     
     self.datahr            = datahr
     self.datalr            = datalr
@@ -69,6 +70,15 @@ class DenseSRGAN:
     self.gen               = None
     self.disc_model        = None
     self.adv_model         = None
+    
+    
+    # Training states
+    self.epoch             = num_epochs_trained
+    
+    print(self.epoch)
+    
+    if self.epoch > 0:
+        assert weights_path is not None, 'If resuming model, please set weights_path'
     
     # Initialize
     self.build_models()
@@ -216,8 +226,8 @@ class DenseSRGAN:
                              'discriminator_weights.h5')
     
     # Create the model 
-    if self.num_gpus is not None:
-      self.disc_model = multi_gpu_model(self.disc, gpus=self.num_gpus)
+    if self.gpu_list is not None:
+      self.disc_model = multi_gpu_model(self.disc, gpus=self.gpu_list)
     else:
       self.disc_model = self.disc
 
@@ -244,8 +254,8 @@ class DenseSRGAN:
     self.adv_model = Model(im_lr, disc_gen_hr)
 
     # Create the model 
-    if self.num_gpus is not None:
-      self.adv_model = multi_gpu_model(Model(im_lr, disc_gen_hr), gpus=self.num_gpus)
+    if self.gpu_list is not None:
+      self.adv_model = multi_gpu_model(Model(im_lr, disc_gen_hr), gpus=self.gpu_list)
     else:
       self.adv_model = Model(im_lr, disc_gen_hr)    
     
@@ -266,15 +276,19 @@ class DenseSRGAN:
   ''' TRAIN '''
   def train(self, datahr=None, datalr=None,
             epochs=1, batch_size=16, callbacks=None,
-            save_interval=1, view_interval=1, 
+            save_interval=10, view_interval=1, 
             bench_idx=None, verbose=False):
      
     #datahr = self.datahr if datahr is None else datahr
     #datalr = self.datalr if datalr is None else datalr
     
-            
-    running_loss = []
-    
+    # Grab the current log if we are continuing training
+    if self.epoch > 0:
+        loss_log_file = data_dir + 'loss_log_epoch.npy'
+        running_loss = np.load(loss_log_file)
+    else:
+        running_loss = []
+        
     # TODO: This just throws away the remaining expamples if not batch_size not divisor of num_train
     num_train   = len(self.datahr)
     num_batches = num_train/batch_size if num_train%batch_size == 0 else num_train/batch_size - 1
@@ -291,7 +305,10 @@ class DenseSRGAN:
         bench_lr  = self.datalr[bench_idx,:,:,:]
         bench_hr  = self.datahr[bench_idx,:,:,:]
         
-    for epoch in range(epochs):
+    start_epoch = self.epoch +  1
+    end_epoch = start_epoch + epochs
+        
+    for epoch in range(start_epoch, end_epoch+1):
         
         # Shuffle the indices TODO: Shuffle batch in place
         idx = np.random.permutation(list(range(num_train - 1)))
@@ -362,6 +379,7 @@ class DenseSRGAN:
             plt.ioff()
             plt.figure().suptitle('HR + Prediction: Epoch {0}'.format(epoch), fontsize=20)
             plt.subplot(1,2,1)
+            #plt.imshow((bench_hr.squeeze() + 1)/2)
             plt.imshow(bench_hr.squeeze())
             plt.subplot(1,2,2)
             plt.imshow(img)
@@ -373,3 +391,5 @@ class DenseSRGAN:
             print('Saving weights at epoch {0}'.format(epoch))
             self.gen.save(self.dir_pfx + 'weights/generator_weights.h5')
             self.disc.save(self.dir_pfx + 'weights/discriminator_weights.h5')
+        
+        self.epoch = epoch
