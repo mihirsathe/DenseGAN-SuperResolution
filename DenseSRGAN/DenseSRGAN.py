@@ -26,7 +26,7 @@ class DenseSRGAN:
     
     self.dir_pfx           = dir_pfx
 
-    self.num_gpus          = num_gpus
+    self.gpu_list          = gpu_list
     
     self.datahr            = datahr
     self.datalr            = datalr
@@ -216,8 +216,8 @@ class DenseSRGAN:
                              'discriminator_weights.h5')
     
     # Create the model 
-    if self.num_gpus is not None:
-      self.disc_model = multi_gpu_model(self.disc, gpus=self.num_gpus)
+    if self.gpu_list is not None:
+      self.disc_model = multi_gpu_model(self.disc, gpus=self.gpu_list)
     else:
       self.disc_model = self.disc
 
@@ -244,8 +244,8 @@ class DenseSRGAN:
     self.adv_model = Model(im_lr, disc_gen_hr)
 
     # Create the model 
-    if self.num_gpus is not None:
-      self.adv_model = multi_gpu_model(Model(im_lr, disc_gen_hr), gpus=self.num_gpus)
+    if self.gpu_list is not None:
+      self.adv_model = multi_gpu_model(Model(im_lr, disc_gen_hr), gpus=self.gpu_list)
     else:
       self.adv_model = Model(im_lr, disc_gen_hr)    
     
