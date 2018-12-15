@@ -1,6 +1,5 @@
 # ECE285FA18_BestGroup
 Super Resolution GAN Project
-![](gan_training.gif)
 
 **Steps to connect to VM** <br>
 N.B. Will only work if you've been approved to access the VM. 
@@ -43,6 +42,7 @@ im_hr, im_lr, batch_idx = utils.load_data(0, training_set, data_dir, True, len(t
  ```
 
 **Training**
+
 ```
 import DenseSRGAN
 dir_pfx = './' # base file path
@@ -50,6 +50,7 @@ gan = DenseSRGAN.DenseSRGAN(dir_pfx,im_hr,im_lr,proj_pfx="OH",gpu_list=[1,3,5,7]
 
 gan.train(epochs=1000,verbose=False,bench_idx=2560,batch_size=16,save_interval=10,view_interval=2)
 ```
+![](gan_training-2.gif)
 **Predictions**
 ```
 # 1117, 
