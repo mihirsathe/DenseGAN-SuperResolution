@@ -1,7 +1,9 @@
 # ECE285FA18_BestGroup
 Super Resolution GAN Project
+![](gan_training.gif)
 
 **Steps to connect to VM** <br>
+N.B. Will only work if you've been approved to access the VM. 
 1. Install G-Cloud CLI SDK <br>
 https://cloud.google.com/sdk/ <br>
 2. Connect to the instance <br>
