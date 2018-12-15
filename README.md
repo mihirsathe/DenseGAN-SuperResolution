@@ -50,7 +50,7 @@ gan = DenseSRGAN.DenseSRGAN(dir_pfx,im_hr,im_lr,proj_pfx="OH",gpu_list=[1,3,5,7]
 
 gan.train(epochs=1000,verbose=False,bench_idx=2560,batch_size=16,save_interval=10,view_interval=2)
 ```
-![](gan_training-2.gif)
+![training](https://github.com/mihirsathe/ECE285FA18_BestGroup/blob/submission/gan-training-2.gif)
 **Predictions**
 ```
 # 1117, 
