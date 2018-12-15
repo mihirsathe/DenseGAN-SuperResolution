@@ -359,3 +359,16 @@ def find_vehicles(channels=3, patch_size=64):
             patch = img[:, xa:xb, ya:yb, :].squeeze()
             imageio.imwrite(dir_path + 'vehicle_patches_64/' +
                             val[0] + "_" + str(key) + '.png', patch)
+
+
+def get_img_patches(im_hr, im_lr, img_idx=0, patch_size=64, img_size=1024):
+
+    PATCH_PER_IMG = (img_size / patch_size)**2
+
+    begin_idx = int(img_idx * PATCH_PER_IMG)
+    end_idx = int(begin_idx + PATCH_PER_IMG)
+
+    im_hr_patched = im_hr[begin_idx:end_idx, :, :, :]
+    im_lr_patched = im_lr[begin_idx:end_idx, :, :, :]
+
+    return im_hr_patched, im_lr_patched
