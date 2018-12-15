@@ -1,7 +1,7 @@
 # ECE285FA18_BestGroup
-Super Resolution GAN Project
+Super Resolution GAN Project<br>
 ![prediction](https://github.com/mihirsathe/ECE285FA18_BestGroup/blob/master/pred_epoch_930_sample_6.png)<br>
-**Steps to connect to VM** <br>
+**Steps to connect to development VM** <br>
 N.B. Will only work if you've been approved to access the VM. 
 1. Install G-Cloud CLI SDK <br>
 https://cloud.google.com/sdk/ <br>
@@ -53,14 +53,20 @@ gan.train(epochs=1000,verbose=False,bench_idx=2560,batch_size=16,save_interval=1
 ![training](https://github.com/mihirsathe/ECE285FA18_BestGroup/blob/submission/gan-training-2.gif)<br>
 **Predictions**
 ```
-# 1117, 
-ix = 10
+im_hr_patched,im_lr_patched = utils.get_img_patches(im_hr,im_lr,i)
 
-img = gan.gen.predict(im_lr[ix:ix+1,:,:,:]).squeeze()
-img = (img + 1)/2
-plt.figure().suptitle('RGB+Infra', fontsize=20)
+
+pred_patches = gan.gen.predict(im_lr_patched)
+
+pred_img_stiched = utils.restitch_image_patches(pred_patches,(1024,1024,4))
+orig_img_stitched = utils.restitch_image_patches(im_hr_patched,(1024,1024,4))
+
+plt.figure().suptitle('Original vs Predicted DenseSRGAN')
 plt.subplot(1,2,1)
-plt.imshow(im_hr[ix,:,:,:])
+plt.imshow(orig_img_stitched[:,:,0:3])
+plt.title('Original Image')
 plt.subplot(1,2,2)
-plt.imshow(img)
+plt.imshow(pred_img_stiched[:,:,0:3])
+plt.title('Predicted Image')
+plt.savefig('{0}{1}pred_epoch_1100_sample_{2}'.format(dir_pfx,'figures/',i))
 ```
