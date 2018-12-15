@@ -1,7 +1,5 @@
 # ECE285FA18_BestGroup
-GAN Project
-
-utils.py contains scripts to import data and do some basic processing
+Super Resolution GAN Project
 
 **Steps to connect to VM** <br>
 1. Install G-Cloud CLI SDK <br>
@@ -11,9 +9,16 @@ https://cloud.google.com/sdk/ <br>
 3. Open Jupyter notebook in browser by visiting:<br>
 localhost:8080 <br>
 
+**Installation Instructions**
+All package requirements are in a pip requirements.txt file that can be installed with:
+```
+pip install -r requirements.txt
+```
 
 
 **Loading dataset example**
+utils.py contains scripts to import data and do some basic processing
+
 ```
 import utils
 path = glob.glob('./drive/My Drive/ECE285_Proj/datasets/VEDAI/*')
@@ -35,9 +40,24 @@ training_set, testing_set = utils.create_subsets(files, data_dir, use_validation
 im_hr, im_lr, batch_idx = utils.load_data(0, training_set, data_dir, True, len(training_set))
  ```
 
-
-**Installation Instructions**
-All package requirements are in a pip requirements.txt file that can be installed with:
+**Training**
 ```
-pip install -r requirements.txt
+import DenseSRGAN
+dir_pfx = './' # base file path
+gan = DenseSRGAN.DenseSRGAN(dir_pfx,im_hr,im_lr,proj_pfx="OH",gpu_list=[1,3,5,7],dropout_rate=0.3,num_epochs_trained=450,weights_path='./weights/OH/')
+
+gan.train(epochs=1000,verbose=False,bench_idx=2560,batch_size=16,save_interval=10,view_interval=2)
+```
+**Predictions**
+```
+# 1117, 
+ix = 10
+
+img = gan.gen.predict(im_lr[ix:ix+1,:,:,:]).squeeze()
+img = (img + 1)/2
+plt.figure().suptitle('RGB+Infra', fontsize=20)
+plt.subplot(1,2,1)
+plt.imshow(im_hr[ix,:,:,:])
+plt.subplot(1,2,2)
+plt.imshow(img)
 ```
