@@ -32,3 +32,8 @@ print('Infra shape: '+ str(infra.shape))
 training_data = normalize(combine_rgb_infra(rgb,infra))
 print('Data shape: '+ str(training_data.shape))
 ```
+**Installation Instructions**
+All package requirements are in a pip requirements.txt file that can be installed with:
+```
+pip install requirements.txt
+```
