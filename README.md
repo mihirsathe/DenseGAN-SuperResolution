@@ -1,5 +1,19 @@
 # ECE285FA18_BestGroup
 Super Resolution GAN Project<br>
+
+**Code Orginization** <br>
+DenseSRGAN - Code Folder<br>
+  loss_logging - Folder for stored loss values<br>
+  weights - Folder for stored model weights<br>
+  DenseBlock.py - Module implementing dense block<br>
+  DenseSRGAN.py - Module implementing super resolution GAN<br>
+  GenseSTGAN_Demo - Demo of code<br>
+  OH_DenseSRGAN.ipynb - Notebook used for training on VEDAI (overhead) dataset<br>
+  VEH_DenseSRGAN.ipynb - Notebook used for training on VEDAI vehicle patches<br>
+  visualize_loss.ipynb - Module used for loss visulization and plotting<br>
+gan-training-2.gif - Gif used in README<br>
+utils.py - Module containing utility functions for importing data etc.<br>
+
 ![prediction](https://github.com/mihirsathe/ECE285FA18_BestGroup/blob/master/pred_epoch_930_sample_6.png)<br>
 **Steps to connect to development VM** <br>
 N.B. Will only work if you've been approved to access the VM. 
