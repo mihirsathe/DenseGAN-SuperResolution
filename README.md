@@ -1,6 +1,6 @@
 # ECE285FA18_BestGroup
 Super Resolution GAN Project
-
+![prediction](https://github.com/mihirsathe/ECE285FA18_BestGroup/blob/master/pred_epoch_930_sample_6.png)<br>
 **Steps to connect to VM** <br>
 N.B. Will only work if you've been approved to access the VM. 
 1. Install G-Cloud CLI SDK <br>
@@ -10,14 +10,14 @@ https://cloud.google.com/sdk/ <br>
 3. Open Jupyter notebook in browser by visiting:<br>
 localhost:8080 <br>
 
-**Installation Instructions**
+**Installation Instructions**<br>
 All package requirements are in a pip requirements.txt file that can be installed with:
 ```
 pip install -r requirements.txt
 ```
 
 
-**Loading dataset example**
+**Loading dataset example**<br>
 utils.py contains scripts to import data and do some basic processing
 
 ```
@@ -50,7 +50,7 @@ gan = DenseSRGAN.DenseSRGAN(dir_pfx,im_hr,im_lr,proj_pfx="OH",gpu_list=[1,3,5,7]
 
 gan.train(epochs=1000,verbose=False,bench_idx=2560,batch_size=16,save_interval=10,view_interval=2)
 ```
-![training](https://github.com/mihirsathe/ECE285FA18_BestGroup/blob/submission/gan-training-2.gif)
+![training](https://github.com/mihirsathe/ECE285FA18_BestGroup/blob/submission/gan-training-2.gif)<br>
 **Predictions**
 ```
 # 1117, 
