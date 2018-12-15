@@ -25,7 +25,7 @@ def un_normalize(image):
     return (image + 1) / 2
 
 
-def read_VEDAI(subset, PATH_TO_VEHICLES_FOLDER):
+def read_VEDAI(subset, PATH_TO_VEHICLES_FOLDER, filename):
     # Takes in the full path to the unzipped "VEHICULES" folder
     # Returns mapping dict, RGB and Infrared images in
     # (images, x, y, channels) format,
@@ -60,23 +60,22 @@ def read_VEDAI(subset, PATH_TO_VEHICLES_FOLDER):
             im_cnt = im_cnt + 1
         else:
             print("The following image is missing!: " + index)
-    f = open(PATH_TO_VEHICLES_FOLDER + "_mapping.txt", "w")
+    f = open(local_dir + "_mapping.txt", "w")
     f.write(str(index_filename_map))
     f.close()
     return rgb, infra
 
 
-def scan_dataset(PATH_TO_VEHICLES_FOLDER, number_of_imgs):
+def scan_dataset(data_path, output_path, number_of_imgs):
     # Takes in the full path to the unzipped "VEHICULES" folder
     # Returns a list of all the files
     # and saves a dataset summary text file with list of all file names
     MAX_INDEX = number_of_imgs
-    PATH_TO_VEHICLES_FOLDER = PATH_TO_VEHICLES_FOLDER
     indices = [format(n, '08') for n in range(MAX_INDEX)]
     export_files = []
 
-    onlyfiles = [f for f in listdir(PATH_TO_VEHICLES_FOLDER) if isfile(
-        join(PATH_TO_VEHICLES_FOLDER, f)) and "png" in f]
+    onlyfiles = [f for f in listdir(data_path) if isfile(
+        join(data_path, f)) and "png" in f]
 
     for index in indices:
         pair = [file for file in onlyfiles if str(index) in file]
@@ -86,13 +85,13 @@ def scan_dataset(PATH_TO_VEHICLES_FOLDER, number_of_imgs):
                     export_files.append(file.split('_')[0])
         else:
             print("The following image is missing!: " + index)
-    np.savetxt(PATH_TO_VEHICLES_FOLDER + '_summary.txt',
+    np.savetxt(output_path + '_summary.txt',
                export_files, delimiter=" ", fmt="%s")
 
     return export_files
 
 
-def create_subsets(imgs, output_path, use_validation=True,
+def create_subsets(img_list, output_path, use_validation=True,
                    training_percent=0.7, testing_percent=0.3, SEED=1):
     # Takes a list of image file names and shuffles
     # them before splitting them into required subsets
@@ -102,12 +101,12 @@ def create_subsets(imgs, output_path, use_validation=True,
     assert training_percent + \
         testing_percent == 1, "Training + testing percents must equal 1."
     random.seed(SEED)
-    random.shuffle(imgs)
-    print('Using ' + str(len(imgs)) + ' images.')
+    random.shuffle(img_list)
+    print('Using ' + str(len(img_list)) + ' images.')
     print('Saving files to ' + output_path)
     if not use_validation:
-        training_imgs = imgs[:int(len(imgs) * training_percent)]
-        testing_imgs = imgs[int(len(imgs) * training_percent):]
+        training_imgs = img_list[:int(len(img_list) * training_percent)]
+        testing_imgs = img_list[int(len(img_list) * training_percent):]
         np.savetxt(output_path + 'training.txt',
                    training_imgs, delimiter=" ", fmt="%s")
         np.savetxt(output_path + 'testing.txt',
@@ -115,12 +114,12 @@ def create_subsets(imgs, output_path, use_validation=True,
         return training_imgs, testing_imgs
     else:
         validation_split = 0.3  # use 30% of training dataset for validation
-        training_imgs = imgs[int(len(imgs) * validation_split *
-                                 training_percent):int(len(imgs) *
+        training_imgs = img_list[int(len(img_list) * validation_split *
+                                 training_percent):int(len(img_list) *
                                                        training_percent)]
-        validation_imgs = imgs[:int(
+        validation_imgs = img_list[:int(
             len(imgs) * validation_split * training_percent)]
-        testing_imgs = imgs[int(len(imgs) * training_percent):]
+        testing_imgs = img_list[int(len(img_list) * training_percent):]
         np.savetxt(output_path + 'validation.txt',
                    validation_imgs, delimiter=" ", fmt="%s")
         np.savetxt(output_path + 'training.txt',
@@ -272,16 +271,25 @@ def load_data_vehicles(DATASET_PATH, num_images, rgb=False,
     imgs_lr = np.asarray([downsample_image(patch) for patch in imgs_hr])
     return imgs_hr, imgs_lr
 
-
-def load_data(file_idx, txt_file, DATASET_PATH, scale01=False, batch_size=1):
+'''
+Load patched data into memory (highres/lowres) patches
+args:
+----
+    data_idx:     The index of current batch in overall data
+    idx_file:     list containing files to patch
+    data_path:    Path to actual 1024x1024 images 
+    scale01:      Scale images to [0,1] otherwise scales to [-1,1]
+    batch_size:   Number of 1024x1024 images to patch per batch
+'''
+def load_data(data_idx, img_list, data_path, scale01=False, batch_size=1):
     # read in batch of file names from txt file with randomized filenames
     # return the lr and hr patches
 
     # read x lines from txt file
-    text_file = open(DATASET_PATH + "/training.txt", "r")
-    img_files = text_file.read().strip().split('\n')
-    text_file.close()
-
+    #text_file = open(idx_file, "r")
+    #img_files = text_file.read().strip().split('\n')
+    #text_file.close()
+    
     # Number of patches * ims_per_batch
     batchsz = 256 * batch_size
     # RGB
@@ -293,15 +301,14 @@ def load_data(file_idx, txt_file, DATASET_PATH, scale01=False, batch_size=1):
     imgs_hr = np.zeros((batchsz, patch_x, patch_y, channels))
 
     # Batch number * ims_per_batch
-    start = file_idx
-    end = file_idx + batch_size
-    # end = len(img_files)
-
+    start = data_idx
+    end = data_idx + batch_size
+    
     im_num = 0
     for i in range(start, end):
         st, stp = im_num * 256, (im_num + 1) * 256
         im_num += 1
-        img = get_images_to_four_chan(img_files[i], DATASET_PATH, channels)
+        img = get_images_to_four_chan(img_list[i], data_path, channels)
         if scale01:
             img = normalize01(img)
         else:
@@ -311,8 +318,8 @@ def load_data(file_idx, txt_file, DATASET_PATH, scale01=False, batch_size=1):
 
     imgs_lr = np.asarray([downsample_image(patch) for patch in imgs_hr])
 
-    file_idx = file_idx + batch_size  # update current file_idx
-    return imgs_hr, imgs_lr, file_idx
+    data_idx = data_idx + batch_size  # update current file_idx
+    return imgs_hr, imgs_lr, data_idx
 
 
 def find_vehicles(channels=3, patch_size=64):
