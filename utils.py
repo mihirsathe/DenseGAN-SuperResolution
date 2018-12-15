@@ -187,16 +187,42 @@ def downsample_image(image, block=(4, 4, 1)):
     return downscale_local_mean(image, block)
 
 
+def restitch_image_patches(patches, img_dim=(1024, 1024, 4)):
+    patch_shape = patches.shape
+    w_patches = patch_shape[1]
+    assert patch_shape[1] == patch_shape[2], 'Expecting square patches, w = h'
+    h_patches = w_patches
+    c_patches = patch_shape[3]
+
+    patch_per_w = int(img_dim[0] / w_patches)
+
+    img_stitched = np.zeros(shape=img_dim)
+
+    for c in range(c_patches):
+        i = 0  # Patch indexer
+        for ih in range(patch_per_w):  # Height
+            y_coord_1 = ih * h_patches
+            y_coord_2 = y_coord_1 + h_patches
+            for iw in range(patch_per_w):  # Width
+                x_coord_1 = iw * w_patches
+                x_coord_2 = x_coord_1 + w_patches
+
+                img_stitched[y_coord_1:y_coord_2,
+                             x_coord_1:x_coord_2, c] = patches[i, :, :, c]
+                i = i + 1
+
+    return img_stitched
+
+
 def reconstruct_patches(patches, image_size=(1024, 1024)):
-    # Reconstructs an image
-    # when given patches created by overlapping_patches
+        # Reconstructs an image
+        # when given patches created by overlapping_patches
     return reconstruct_from_patches_2d(patches, image_size)
 
 
 def get_images_to_four_chan(img_name, DATASET_PATH, ch_num=4):
     co = imageio.imread(DATASET_PATH + img_name + '_co.png')
     if ch_num == 4:
-        # ir = imageio.imread(DATASET_PATH + 'VEDAI/' + img_name + '_ir.png')
         ir = imageio.imread(DATASET_PATH + img_name + '_ir.png')
         rgb = np.reshape(co, (tuple([1]) + co.shape))
         infra = np.reshape(ir, (tuple([1]) + ir.shape + tuple([1])))
