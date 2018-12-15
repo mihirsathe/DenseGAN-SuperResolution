@@ -372,3 +372,11 @@ def get_img_patches(im_hr, im_lr, img_idx=0, patch_size=64, img_size=1024):
     im_lr_patched = im_lr[begin_idx:end_idx, :, :, :]
 
     return im_hr_patched, im_lr_patched
+
+def PSNR(im1, im2): 
+    assert im1.shape == im2.shape, 'Images must be the same dimension'
+    im_h = im1.shape[0]
+    im_w = im1.shape[1]
+    im_c = im1.shape[2]
+    mse = np.sum((im1 - im2)**2)/(im_w*im_h*im_c)
+    return 10*np.log10(1**2/mse)
