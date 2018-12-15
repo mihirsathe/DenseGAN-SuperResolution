@@ -1,5 +1,6 @@
 # ECE285FA18_BestGroup
 Super Resolution GAN Project
+![Prediction](pred_epoch_930_sample_6.png)
 
 **Steps to connect to VM** <br>
 N.B. Will only work if you've been approved to access the VM. 
