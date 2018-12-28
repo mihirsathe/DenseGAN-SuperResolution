@@ -1,4 +1,4 @@
-# ECE285FA18_BestGroup
+# DenseGAN
 Super Resolution GAN Project
 ![Prediction](pred_epoch_930_sample_6.png)
 
