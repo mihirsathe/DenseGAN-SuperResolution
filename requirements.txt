@@ -31,7 +31,7 @@ cloudpickle==0.6.1
 colour==0.1.5
 configparser==3.5.0
 crcmod==1.7
-cryptography==2.4.1
+cryptography==3.2
 cycler==0.10.0
 daal==2019.0
 dask==0.20.2
