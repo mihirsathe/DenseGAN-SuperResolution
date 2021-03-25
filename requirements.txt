@@ -172,7 +172,7 @@ pytz==2018.4
 PyVCF==0.6.8
 PyWavelets==1.0.1
 pyxdg==0.25
-PyYAML==3.13
+PyYAML==5.4
 pyzmq==17.1.2
 qtconsole==4.4.3
 requests==2.20.1
