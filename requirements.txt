@@ -163,7 +163,7 @@ pycrypto==2.6.1
 pydaal==2019.0.0.20180713
 pydot==1.2.4
 pyglet==1.3.2
-Pygments==2.2.0
+Pygments==2.7.4
 pygobject==3.22.0
 PyJWT==1.6.4
 pyparsing==2.3.0
